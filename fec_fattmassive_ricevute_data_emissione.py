@@ -101,8 +101,8 @@ def FileCorrispettivi_scrivi(filename, lines, debug_len=False):
     if debug_len:
         print("File length:  precomp_payload=%d\tI/O=%d"%(payload_len,file_len))
         sys.exit(0)
-cfclientexml = path + '/' + 'FATT_' + cfcliente + '.xml'
-cfclientexmlnopath = 'FATT_' + cfcliente + '.xml' 
+cfclientexml = path + '/' + 'FATT_M_RICEVUTE_EMISSIONE' + cfcliente + '.xml'
+cfclientexmlnopath = 'FATT_M_RICEVUTE_EMISSIONE' + cfcliente + '.xml' 
 
 #uso della funzione che crea il file con il definizione del nome file xml e ontenuto
 FileCorrispettivi_scrivi(cfclientexml, file_corrispettivi)

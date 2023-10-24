@@ -17,7 +17,7 @@ def unixTime():
     dt = datetime.now(tz=pytz.utc)
     return str(int(dt.timestamp() * 1000))
 
-profilo = 0 # Impostare il profilo Delega diretta codice 1, Me stesso 2, Studio Associato Default
+profilo = 1 # Impostare il profilo Delega diretta codice 1, Me stesso 2, Studio Associato Default
 CF = sys.argv[1]
 PIN = sys.argv[2]
 Password  = sys.argv[3]

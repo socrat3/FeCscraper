@@ -49,15 +49,16 @@ try:
     s.cookies.set_cookie(cookie_obj2)
     r = s.get('https://ivaservizi.agenziaentrate.gov.it/portale/web/guest', verify=False)
 
-    print('Collegamento alla homepage')
+    if r.status_code == 200:
+        puts(colored.yellow('Collegamento alla homepage. Avvio.'))
+    else:
+        puts(colored.red('Collegamento alla homepage non riuscito: uscita.'))
+        sys.exit()
     cookieJar = s.cookies
 
     print('Effettuo il login')
-
-
     payload = {'_58_saveLastPath': 'false', '_58_redirect' : '', '_58_doActionAfterLogin': 'false', '_58_login': CF , '_58_pin': PIN, '_58_password': Password}    
     r = s.post('https://ivaservizi.agenziaentrate.gov.it/portale/home?p_p_id=58&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_pos=3&p_p_col_count=4&_58_struts_action=%2Flogin%2Flogin', data=payload)
-
     cookieJar = s.cookies
 
     liferay = re.findall(r"Liferay.authToken = '.*';", r.text)[0]
@@ -65,6 +66,14 @@ try:
     p_auth = p_auth.replace("';", "")
 
     r = s.get('https://ivaservizi.agenziaentrate.gov.it/dp/api?v=' + unixTime())
+# controlla fase di login 
+    if r.status_code == 200:
+        puts(colored.yellow('Login riuscito. Con credenzilali ENTRATEL'))
+    else:
+        puts(colored.red('Login non riuscito: uscita.')) 
+        sys.exit()
+
+    
     cookieJar = s.cookies
 
     print('Seleziono il tipo di incarico')
@@ -89,6 +98,13 @@ try:
 
     print('Aderisco al servizio')
     r = s.get('https://ivaservizi.agenziaentrate.gov.it/ser/api/fatture/v1/ul/me/adesione/stato/')
+# ADERISCO AL SERVIZIO - NA CAMURRIA!
+    if r.status_code == 200:
+        puts(colored.yellow('Adesione riuscita ai servizi AdE.'))
+    else:
+        puts(colored.red('Adesione ai servizi AdE non riuscita: uscita.')) 
+        sys.exit()
+    
     cookieJar = s.cookies 
 
     headers_token = {'x-xss-protection': '1; mode=block',
@@ -96,6 +112,11 @@ try:
                'x-content-type-options': 'nosniff',
                'x-frame-options': 'deny'}
     r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/sc/tokenB2BCookie/get?v='+unixTime() , headers = headers_token )
+    if r.status_code == 200:
+        puts(colored.yellow('B2B Cookie ottenuto'))
+    else:
+        puts(colored.red('B2B Cookie non ottenuto: uscita.')) 
+        sys.exit()
     cookieJar = s.cookies
     tokens = r.headers
 
@@ -141,6 +162,12 @@ try:
         #===============================================================================================
         print('Scarico il json delle fatture ricevute e messe a disposizione per la partita IVA ' + cfcliente)
         r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fe/mc/dal/'+Dal+'/al/'+Al+'?v=' + unixTime(), headers = headers)
+        if r.status_code == 200:
+            puts(colored.yellow('Lista ottenuta.'))
+        else:
+            puts(colored.red('Lista non ottenuta: uscita.')) 
+            sys.exit()
+
 
         with open('fe_ricevute_disposizione.json', 'wb') as f:
             f.write(r.content)

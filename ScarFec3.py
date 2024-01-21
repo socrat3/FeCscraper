@@ -163,9 +163,9 @@ try:
         print('Scarico il json delle fatture ricevute e messe a disposizione per la partita IVA ' + cfcliente)
         r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fe/mc/dal/'+Dal+'/al/'+Al+'?v=' + unixTime(), headers = headers)
         if r.status_code == 200:
-            puts(colored.yellow('Lista ottenuta.'))
+            puts(colored.yellow('Lista ottenuta FATTURE A DISPOSIZIONE. Potrebbe essere vuota!'))
         else:
-            puts(colored.red('Lista non ottenuta: uscita.')) 
+            puts(colored.red('Lista FATTURE A DISPOSIZIONE non ottenuta: uscita.')) 
             sys.exit()
 
 
@@ -197,11 +197,11 @@ try:
 
 
         #===============================================================================================
-        # FATTURE RICEVUTE
+        # FATTURE PASSIVE RICEVUTE
         #===============================================================================================
         if tipo == 1:
         # r = s.get('https://ivaservizi.agenziaentrate.gov.it/ser/api/monitoraggio/v1/monitoraggio/fatture/?v='+unixTime()+'&idFiscCedente=&idFiscDestinatario=&idFiscEmittente=&idFiscTrasmittente=&idSdi=&perPage=10&start=1&statoFile=&tipoFattura=EMESSA')
-             print('Scarico il json delle fatture ricevute per data di ricezione la partita IVA ' + cfcliente)
+             print('Scarico il json delle fatture ricevute per data ricezione per la partita IVA ' + cfcliente)
              r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fe/ricevute/dal/'+Dal+'/al/'+Al+'/ricerca/ricezione?v=' + unixTime(), headers = headers)
         else:     
              print('Scarico il json delle fatture ricevute per data di emissione per la partita IVA ' + cfcliente)
@@ -210,26 +210,42 @@ try:
         with open('fe_ricevute_'+ cfcliente +'.json', 'wb') as f:
             f.write(r.content)
             
-        print('Inizio a scaricare le fatture ricevute')
+        print('Inizio a scaricare le fatture PASSIVE ricevute')
         path = r'FatturePassive_' + cfcliente
         if not os.path.exists(path):
             os.makedirs(path)
         with open('fe_ricevute_'+ cfcliente +'.json') as data_file:    
             data = json.load(data_file)
-            numero_fatture = 0
-            numero_notifiche = 0
+            print('Inizio a scaricare ' + str(data['totaleFatture']) + ' fatture dal ' + data['dataRicercaDa'] + ' al ' + data['dataRicercaA'] + ' per un massimo di ' + str(data['limiteBloccoTotaleFatture']) + ' fatture scaricabili.')
             for fattura in data['fatture']:
                 fatturaFile = fattura['tipoInvio']+fattura['idFattura']
-                r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fatture/file/'+fatturaFile+'?tipoFile=FILE_FATTURA&download=1&v='+unixTime() , headers = headers_token )
-                if r.status_code == 200:
-                    numero_fatture = numero_fatture + 1
+                with s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fatture/file/'+fatturaFile+'?tipoFile=FILE_FATTURA&download=1&v='+unixTime(), headers = headers_token , stream = True) as r:
+                    r.raise_for_status()
+                    total_size = int(r.headers.get('content-length', 0))
                     d = r.headers['content-disposition']
                     fname = re.findall("filename=(.+)", d)
-                    print('Downloading ' + fname[0])
-                    print('Totale fatture RICEVUTE scaricate: ', numero_fatture)
                     with open(path + '/' + fname[0], 'wb') as f:
-                        f.write(r.content)          
-        print('Totale fatture RICEVUTE scaricate: ', numero_fatture)
+                        pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
+                        pbar.set_description('Scaricando ' + fname[0])
+                        for chunk in r.iter_content(chunk_size=1024):
+                            if chunk:  
+                                f.write(chunk)
+                                pbar.update(len(chunk))
+                        pbar.close()
+                with s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fatture/file/'+fatturaFile+'?tipoFile=FILE_METADATI&download=1&v='+unixTime(), headers = headers_token , stream = True) as r:
+                    r.raise_for_status()
+                    total_size = int(r.headers.get('content-length', 0))
+                    d = r.headers['content-disposition']
+                    fname = re.findall("filename=(.+)", d)
+                    with open(path + '/' + fname[0], 'wb') as f:
+                        pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
+                        pbar.set_description('Scaricando ' + fname[0])
+                        for chunk in r.iter_content(chunk_size=1024):
+                            if chunk:  
+                                f.write(chunk)
+                                pbar.update(len(chunk))
+                        pbar.close()                
+        print('Totale fatture PASSIVE RICEVUTE scaricate: ', numero_fatture)
 
 
     #=============# FATTURE TRANSFRONTALIERE RICEVUTE=======#
@@ -265,7 +281,7 @@ try:
     if VenOAcq != "A":
     #========================================================================================
     # FATTURE EMESSE
-    #=========================================================================================
+    #========================================================================================
         print('Scarico il json delle fatture Emesse per la Partita IVA ' + cfcliente)
         r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fe/emesse/dal/'+Dal+'/al/'+Al+'?v=' + unixTime(), headers = headers)
 
@@ -327,6 +343,6 @@ try:
         print('Totale fatture TRANSFRONTALIERE EMESSE scaricate: ', numero_fatture)
 
 except KeyboardInterrupt:
-    print("Programma terminato manualmente!")
+    print("Programma INTERROTTO manualmente!")
 
 sys.exit()

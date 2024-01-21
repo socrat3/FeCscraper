@@ -15,6 +15,7 @@ import sys
 import pytz
 import json
 import os
+import shutil
 from clint.textui import colored, puts
 from tqdm import *
 
@@ -59,7 +60,9 @@ def decrypt_p7m_files(input_dir, output_dir):
             except subprocess.CalledProcessError as e:
                 print(f"Si è verificato un errore durante l'esecuzione del comando per {filename}.")
                 print("Errore:", e)
-
+        if filename.endswith(".xml") and not filename.endswith("_metadato.xml"):
+            file_path = os.path.join(input_dir, filename)
+            shutil.copy(file_path, output_dir)
 # Esempio di utilizzo: funzione
 # decrypt_p7m_files('/percorso/alla/directory/input', '/percorso/alla/directory/output')
 
@@ -293,7 +296,7 @@ try:
                         numero_notifiche_ricevute = numero_notifiche_ricevute + 1
                         r.raise_for_status()
                         total_size = int(r.headers.get('content-length', 0))
-                        d = r.headers['content-disposition']
+                        d = r.headers['content-disposition'] # viene commentato per evitare di duplicare file metadato, nome originale
                         fname = re.findall("filename=(.+)", d)
                         print('Downloading metadati nome originale = ' + fname[0])
                         print('Downloading metadati rinominato col nome fattura = ' + fmetadato[0] + '_metadato.xml')
@@ -342,7 +345,7 @@ try:
                 r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fatture/file/'+fatturaFile+'?tipoFile=FILE_METADATI&download=1&v='+unixTime() , headers = headers_token )
                 if r.status_code == 200:
                     numero_notifiche = numero_notifiche + 1
-                    d = r.headers['content-disposition']
+                    # d = r.headers['content-disposition']
                     fname = re.findall("filename=(.+)", d)
                     print('Downloading metadati = ' + fname[0])
                     print('Downloading metadati rinominato = ' + fmetadato[0] + '_metadato.xml')

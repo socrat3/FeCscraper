@@ -1,7 +1,7 @@
 ## Licenza Libera progetto originario di Claudio Pizzillo
 ## Modifiche e riadattamenti da Salvatore Crapanzano
 ## 01/08/23 Altre modifiche da Uzirox## 
-## V. 3.1 del 21-01-2024  - Intermediari e Diretto e Studio Associato
+## V. 3.1.1 del 21-01-2024  - Intermediari e Diretto e Studio Associato
 ## 
 
 import requests
@@ -218,7 +218,7 @@ try:
             data = json.load(data_file)
             numero_fatture_ricevute = 0
             numero_notifiche_ricevute = 0
-            print('Inizio a scaricare ' + str(data['totaleFatture']) + ' fatture dal ' + data['dataRicercaDa'] + ' al ' + data['dataRicercaA'] + ' per un massimo di ' + str(data['limiteBloccoTotaleFatture']) + ' fatture scaricabili.')
+            print('Inizio a scaricare ' + str(data['totaleFatture']) + ' fatture PASSIVE ricevute dal ' + data['dataRicercaDa'] + ' al ' + data['dataRicercaA'] + ' per un massimo di ' + str(data['limiteBloccoTotaleFatture']) + ' fatture scaricabili.')
             for fattura in data['fatture']:
                 fatturaFile = fattura['tipoInvio']+fattura['idFattura']
                 with s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fatture/file/'+fatturaFile+'?tipoFile=FILE_FATTURA&download=1&v='+unixTime(), headers = headers_token , stream = True) as r:

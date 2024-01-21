@@ -298,6 +298,63 @@ try:
             
         print('Inizio a scaricare le fatture emesse')
         path = r'FattureEmesse_' + cfcliente
+        # DA QUI
+        with open('fe_emesse_'+ cfcliente +'.json') as data_file:    
+            data = json.load(data_file)
+            numero_fatture = 0
+            numero_notifiche = 0
+            for fattura in data['fatture']:
+                fatturaFile = fattura['tipoInvio']+fattura['idFattura']
+                idInviofile = fattura['fileDownload']['idInvio']
+                datafatturajson = fattura['dataFattura']
+                datafatturaAAAAMMDD = datetime.strptime(datafatturajson, "%Y-%m-%d")
+                strdatafatturaGGMMAAAA = datetime.strftime(datafatturaAAAAMMDD, "%m/%d/%Y")
+                filejsonindinvio = 'fatturaID'+idInviofile+'.json'
+                r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fatture/file/'+fatturaFile+'?tipoFile=FILE_FATTURA&download=1&v='+unixTime() , headers = headers_token )
+                if r.status_code == 200:
+                    numero_fatture = numero_fatture + 1
+                    d = r.headers['content-disposition']
+                    fname = re.findall("filename=(.+)", d)
+                    print('Downloading ' + fname[0])
+                    print('Totale fatture scaricate: ', numero_fatture)
+                    pathsub = r'FattureEmesse_' + cfcliente + '_' + str(numero_fatture)
+                    if not os.path.exists(path):
+                         os.makedirs(path)
+                    with open(path + '/' + fname[0], 'wb') as f:
+                        f.write(r.content)
+                        fmetadato = re.findall("filename=(.+)", d)
+                        r = s.get('https://ivaservizi.agenziaentrate.gov.it/ser/api/monitoraggio/v1/monitoraggio/fatture/dettaglio/?v='+unixTime()+'&idSdi='+idInviofile+'&operatore=e', headers = headers_token )
+                # filejsonindinvio = json.dumps(dict(requests.get('https://ivaservizi.agenziaentrate.gov.it/ser/api/monitoraggio/v1/monitoraggio/fatture/dettaglio/?v='+unixTime()+'&idSdi='+idInviofile+'&operatore=e').headers_token))
+                if r.status_code == 200:
+                    filejsonindinvio = 'fatturaID'+idInviofile+'.json'
+                with open(filejsonindinvio, 'wb') as fj:
+                    fj.write(r.content)
+                    print('Scarico file json della fattura emessa: '+'fatturaID'+idInviofile+'.json')
+                with open(filejsonindinvio) as dati:
+                    print(dati)
+                    datajson = json.load(dati)
+                    if datajson['elencoNotifiche'] == []:
+                        print('No Data!')
+                    else:
+                        for idSDIelenco in datajson['elencoNotifiche'] :
+                            print('ID Invio:' + str(idSDIelenco['id']))
+                            print('nome:' + str(idSDIelenco['nome']))
+                            print('Data UNIX' + str(idSDIelenco['dataConsegna']))
+                        for idSDIelenco in datajson['elencoNotifiche']:
+                            tipettofile = str(idSDIelenco['nome'])
+                            if tipettofile == "File dei metadati":
+                                 print("No Data!")
+                            else:
+                                idSDIinvio = idSDIelenco['id']
+                                stridSDIinvio = str(idSDIinvio)
+                                r = s.get('https://ivaservizi.agenziaentrate.gov.it/ser/api/monitoraggio/v1/monitoraggio/fatture/notifiche/'+stridSDIinvio+'/download/' , headers = headers_token)
+                                if r.status_code == 200:
+                                     d = r.headers['content-disposition']
+                                     fname = re.findall("filename=(.+)", d)
+                                     with open(path + '/' + fname[0], 'wb') as f:
+                                         f.write(r.content)
+
+        # FINO A QUI
         if not os.path.exists(path):
             os.makedirs(path)
         with open('fe_emesse_'+ cfcliente +'.json') as data_file:    
@@ -329,26 +386,68 @@ try:
             f.write(r.content)
             
         print('Inizio a scaricare le fatture transfrontaliere emesse')
-        path = r'FattureEmesse_' + cfcliente + "_" + Dal
+        path = r'FattureEmesse_' + cfcliente
         if not os.path.exists(path):
             os.makedirs(path)
+# DA QUI 
         with open('fe_emessetr_'+ cfcliente +'.json') as data_file:    
             data = json.load(data_file)
             numero_fatture = 0
             numero_notifiche = 0
             for fattura in data['fatture']:
                 fatturaFile = fattura['tipoInvio']+fattura['idFattura']
+                idInviofile = fattura['fileDownload']['idInvio']
+                datafatturajson = fattura['dataFattura']
+                datafatturaAAAAMMDD = datetime.strptime(datafatturajson, "%Y-%m-%d")
+                strdatafatturaGGMMAAAA = datetime.strftime(datafatturaAAAAMMDD, "%m/%d/%Y")
+                filejsonindinvio = 'fatturaID'+idInviofile+'.json'
                 r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fatture/file/'+fatturaFile+'?tipoFile=FILE_FATTURA&download=1&v='+unixTime() , headers = headers_token )
                 if r.status_code == 200:
                     numero_fatture = numero_fatture + 1
                     d = r.headers['content-disposition']
                     fname = re.findall("filename=(.+)", d)
                     print('Downloading ' + fname[0])
-                    print('Totale fatture TRANSFRONTALIERE EMESSE scaricate: ', numero_fatture)
+                    print('Totale fatture scaricate: ', numero_fatture)
+                    pathsub = r'FattureEmesse_' + cfcliente + '_' + str(numero_fatture)
+                    if not os.path.exists(path):
+                         os.makedirs(path)
                     with open(path + '/' + fname[0], 'wb') as f:
                         f.write(r.content)
+                        fmetadato = re.findall("filename=(.+)", d)
+                        r = s.get('https://ivaservizi.agenziaentrate.gov.it/ser/api/monitoraggio/v1/monitoraggio/fatture/dettaglio/?v='+unixTime()+'&idSdi='+idInviofile+'&operatore=e', headers = headers_token )
+                # filejsonindinvio = json.dumps(dict(requests.get('https://ivaservizi.agenziaentrate.gov.it/ser/api/monitoraggio/v1/monitoraggio/fatture/dettaglio/?v='+unixTime()+'&idSdi='+idInviofile+'&operatore=e').headers_token))
+                if r.status_code == 200:
+                    filejsonindinvio = 'fatturaID'+idInviofile+'.json'
+                with open(filejsonindinvio, 'wb') as fj:
+                    fj.write(r.content)
+                    print('Scarico file json della fattura emessa: '+'fatturaID'+idInviofile+'.json')
+                with open(filejsonindinvio) as dati:
+                    print(dati)
+                    datajson = json.load(dati)
+                    if datajson['elencoNotifiche'] == []:
+                        print('No Data123!')
+                    else:
+                        for idSDIelenco in datajson['elencoNotifiche'] :
+                            print('ID Invio:' + str(idSDIelenco['id']))
+                            print('nome:' + str(idSDIelenco['nome']))
+                            print('Data UNIX' + str(idSDIelenco['dataConsegna']))
+                        for idSDIelenco in datajson['elencoNotifiche']:
+                            tipettofile = str(idSDIelenco['nome'])
+                            if tipettofile == "File dei metadati":
+                                 print("Ho Scaricato correttamente il file metadati!")
+                            else:
+                                idSDIinvio = idSDIelenco['id']
+                                stridSDIinvio = str(idSDIinvio)
+                                r = s.get('https://ivaservizi.agenziaentrate.gov.it/ser/api/monitoraggio/v1/monitoraggio/fatture/notifiche/'+stridSDIinvio+'/download/' , headers = headers_token)
+                                if r.status_code == 200:
+                                     d = r.headers['content-disposition']
+                                     fname = re.findall("filename=(.+)", d)
+                                     with open(path + '/' + fname[0], 'wb') as f:
+                                         f.write(r.content)
+                #os.system('cls')
         print('Per il cliente: ', cfcliente)
-        print('Totale fatture TRANSFRONTALIERE EMESSE scaricate: ', numero_fatture)
+        print('Totale fatture trasfrontaliere scaricate: ', numero_fatture)
+        print('Totale notifiche scaricate: ', numero_notifiche)
 
 except KeyboardInterrupt:
     print("Programma INTERROTTO manualmente!")

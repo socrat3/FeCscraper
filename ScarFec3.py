@@ -1,7 +1,7 @@
 ## Licenza Libera progetto originario di Claudio Pizzillo
 ## Modifiche e riadattamenti da Salvatore Crapanzano
 ## 01/08/23 Altre modifiche da Uzirox## 
-## V. 3.0 del 21-01-2024  - Intermediari e Diretto e Studio Associato
+## V. 3.1 del 21-01-2024  - Intermediari e Diretto e Studio Associato
 ## 
 
 import requests
@@ -225,6 +225,9 @@ try:
                     d = r.headers['content-disposition']
                     fname = re.findall("filename=(.+)", d)
                     with open(path + '/' + fname[0], 'wb') as f:
+                        f.write(r.content)
+                        fmetadato = re.findall("filename=(.+)", d)
+                    with open(path + '/' + fname[0], 'wb') as f:
                         pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
                         pbar.set_description('Scaricando ' + fname[0])
                         for chunk in r.iter_content(chunk_size=1024):
@@ -237,6 +240,11 @@ try:
                     total_size = int(r.headers.get('content-length', 0))
                     d = r.headers['content-disposition']
                     fname = re.findall("filename=(.+)", d)
+                    print('Downloading metadati = ' + fname[0])
+                    print('Downloading metadati rinominato = ' + fmetadato[0] + '_metadato.xml')
+                    print('Totale notifiche scaricate: ', numero_notifiche)
+                    with open(path + '/' + fmetadato[0] + '_metadato.xml', 'wb') as f:
+                        f.write(r.content)                
                     with open(path + '/' + fname[0], 'wb') as f:
                         pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
                         pbar.set_description('Scaricando ' + fname[0])

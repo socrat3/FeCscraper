@@ -22,7 +22,7 @@ def unixTime():
     dt = datetime.now(tz=pytz.utc)
     return str(int(dt.timestamp() * 1000))
 try:
-    if len(sys.argv) < 8:
+    if len(sys.argv) < 10:
         print('Utilizzo: fec.py(fec.exe) CodiceFiscale/CodiceEntratel PIN Password PartitaIVA DataDal DataAl FOL/ENT')
         print('Esempio: TXXXXXX PIN PASSWORD COD_FISCALE 01012023 31032023 CF_CLIENTE PIVA_CLIENTE {1/2} [A-V-T')
         sys.exit()

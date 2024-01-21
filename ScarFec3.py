@@ -4,6 +4,7 @@
 ## V. 3.1.1 del 21-01-2024  - Intermediari e Diretto e Studio Associato
 ## 
 
+import subprocess
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -16,6 +17,52 @@ import json
 import os
 from clint.textui import colored, puts
 from tqdm import *
+
+# funzizone di decodifica file P7m
+def decrypt_p7m_files(input_dir, output_dir):
+    """
+    Decripta i file .p7m nella directory specificata e salva i file decriptati
+    nella directory di output specificata.
+
+    Args:
+    input_dir (str): La directory contenente i file .p7m da decriptare.
+    output_dir (str): La directory dove verranno salvati i file decriptati.
+    """
+    # Verifica se la directory di input esiste e se è una directory
+    if not os.path.exists(input_dir) or not os.path.isdir(input_dir):
+        print(f"La directory di input {input_dir} non esiste o non è una directory.")
+        return
+
+    # Crea la directory di output se non esiste
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Controlla se ci sono file nella directory di input
+    if not os.listdir(input_dir):
+        print(f"Nessun file trovato in {input_dir}.")
+        return
+
+    # Itera sui file nella directory di input
+    for filename in os.listdir(input_dir):
+        if filename.endswith(".p7m"):
+            file_path_p7m = os.path.join(input_dir, filename)
+            split_filename = filename.split(sep=".")
+            file_name_decrypted = f"{output_dir}/{split_filename[0]}.{split_filename[1]}"
+
+            # Costruisce il comando per la decriptazione
+            command = (f"openssl cms -decrypt -verify -inform DER -in \"{file_path_p7m}\" -noverify -out \"{file_name_decrypted}\"")
+            print(command)
+            try:
+                # Esegue il comando
+                subprocess.run(command, shell=True, check=True)
+                print(f"Decriptazione e verifica di {filename} completate con successo.")
+            except subprocess.CalledProcessError as e:
+                print(f"Si è verificato un errore durante l'esecuzione del comando per {filename}.")
+                print("Errore:", e)
+
+# Esempio di utilizzo:
+# decrypt_p7m_files('/percorso/alla/directory/input', '/percorso/alla/directory/output')
+
 
     
 def unixTime():
@@ -154,8 +201,6 @@ try:
     cookieJar = s.cookies
 
 
-
-
     if VenOAcq != "V":
         #===============================================================================================
         # FATTURE MESSE A DISPOSIZIONE
@@ -212,8 +257,12 @@ try:
             
         print('Inizio a scaricare le fatture PASSIVE ricevute')
         path = r'FatturePassive_' + cfcliente
+        pathp7m = path + '_p7m'
         if not os.path.exists(path):
             os.makedirs(path)
+        if not os.path.exists(path):
+            os.makedirs(pathp7m)
+
         with open('fe_ricevute_'+ cfcliente +'.json') as data_file:    
             data = json.load(data_file)
             numero_fatture_ricevute = 0
@@ -233,7 +282,7 @@ try:
                             fmetadato = re.findall("filename=(.+)", d)
                             with open(path + '/' + fname[0], 'wb') as f:
                                 pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
-                                pbar.set_description('Scaricando ' + fname[0])
+                                pbar.set_description('Scarico la fattura: ' + fname[0])
                                 for chunk in r.iter_content(chunk_size=1024):
                                     if chunk:  
                                         f.write(chunk)
@@ -246,19 +295,20 @@ try:
                         total_size = int(r.headers.get('content-length', 0))
                         d = r.headers['content-disposition']
                         fname = re.findall("filename=(.+)", d)
-                        print('Downloading metadati = ' + fname[0])
-                        print('Downloading metadati rinominato = ' + fmetadato[0] + '_metadato.xml')
+                        print('Downloading metadati nome originale = ' + fname[0])
+                        print('Downloading metadati rinominato col nome fattura = ' + fmetadato[0] + '_metadato.xml')
                         print('Totale notifiche scaricate: ', numero_notifiche_ricevute)
                         with open(path + '/' + fmetadato[0] + '_metadato.xml', 'wb') as f:
                             f.write(r.content)                
                             with open(path + '/' + fname[0], 'wb') as f:
                                 pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
-                                pbar.set_description('Scaricando ' + fname[0])
+                                pbar.set_description('Sto scaricando ->' + fname[0])
                                 for chunk in r.iter_content(chunk_size=1024):
                                     if chunk:  
                                         f.write(chunk)
                                         pbar.update(len(chunk))
                                 pbar.close()                
+            decrypt_p7m_files(path, pathp7m)
             print('Totale fatture PASSIVE RICEVUTE scaricate: ', numero_fatture_ricevute , ' e notifiche ' , numero_notifiche_ricevute)
 
 

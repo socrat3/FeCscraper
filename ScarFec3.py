@@ -178,8 +178,8 @@ try:
         with open('fe_ricevute_disposizione_'+ cfcliente +'.json') as data_file:    
             data = json.load(data_file)
             #print('Inizio a scaricare ' + str(data['totaleFatture']) + ' fatture dal ' + data['dataRicercaDa'] + ' al ' + data['dataRicercaA'] + ' per un massimo di ' + str(data['limiteBloccoTotaleFatture']) + ' fatture scaricabili.')#
-            numero_fatture = 0
-            numero_notifiche = 0
+            numero_fatture_disposizione = 0
+            numero_notifiche_disposizione = 0
             for fattura in data['fatture']:
                 fatturaFile = fattura['tipoInvio']+fattura['idFattura']
                 r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fatture/file/'+fatturaFile+'?tipoFile=FILE_FATTURA&download=1&v='+unixTime() , headers = headers_token )
@@ -188,10 +188,10 @@ try:
                     d = r.headers['content-disposition']
                     fname = re.findall("filename=(.+)", d)
                     print('Downloading ' + fname[0])
-                    print('Totale fatture messe a disposizione scaricate: ', numero_fatture)
+                    print('Totale fatture messe a disposizione scaricate: ', numero_fatture_disposizione)
                     with open(path + '/' + fname[0], 'wb') as f:
                         f.write(r.content)              
-        print('Totale fatture messe a disposizione scaricate: ', numero_fatture)
+        print('Totale fatture messe a disposizione scaricate: ', numero_fatture_disposizione)
 
 
 
@@ -216,44 +216,50 @@ try:
             os.makedirs(path)
         with open('fe_ricevute_'+ cfcliente +'.json') as data_file:    
             data = json.load(data_file)
+            numero_fatture_ricevute = 0
+            numero_notifiche_ricevute = 0
             print('Inizio a scaricare ' + str(data['totaleFatture']) + ' fatture dal ' + data['dataRicercaDa'] + ' al ' + data['dataRicercaA'] + ' per un massimo di ' + str(data['limiteBloccoTotaleFatture']) + ' fatture scaricabili.')
             for fattura in data['fatture']:
                 fatturaFile = fattura['tipoInvio']+fattura['idFattura']
                 with s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fatture/file/'+fatturaFile+'?tipoFile=FILE_FATTURA&download=1&v='+unixTime(), headers = headers_token , stream = True) as r:
-                    r.raise_for_status()
-                    total_size = int(r.headers.get('content-length', 0))
-                    d = r.headers['content-disposition']
-                    fname = re.findall("filename=(.+)", d)
-                    with open(path + '/' + fname[0], 'wb') as f:
-                        f.write(r.content)
-                        fmetadato = re.findall("filename=(.+)", d)
-                    with open(path + '/' + fname[0], 'wb') as f:
-                        pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
-                        pbar.set_description('Scaricando ' + fname[0])
-                        for chunk in r.iter_content(chunk_size=1024):
-                            if chunk:  
-                                f.write(chunk)
-                                pbar.update(len(chunk))
-                        pbar.close()
+                    if r.status_code == 200:
+                        numero_fatture_ricevute = numero_fatture_ricevute + 1
+                        r.raise_for_status()
+                        total_size = int(r.headers.get('content-length', 0))
+                        d = r.headers['content-disposition']
+                        fname = re.findall("filename=(.+)", d)
+                        with open(path + '/' + fname[0], 'wb') as f:
+                            f.write(r.content)
+                            fmetadato = re.findall("filename=(.+)", d)
+                            with open(path + '/' + fname[0], 'wb') as f:
+                                pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
+                                pbar.set_description('Scaricando ' + fname[0])
+                                for chunk in r.iter_content(chunk_size=1024):
+                                    if chunk:  
+                                        f.write(chunk)
+                                        pbar.update(len(chunk))
+                                pbar.close()
                 with s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fatture/file/'+fatturaFile+'?tipoFile=FILE_METADATI&download=1&v='+unixTime(), headers = headers_token , stream = True) as r:
-                    r.raise_for_status()
-                    total_size = int(r.headers.get('content-length', 0))
-                    d = r.headers['content-disposition']
-                    fname = re.findall("filename=(.+)", d)
-                    print('Downloading metadati = ' + fname[0])
-                    print('Downloading metadati rinominato = ' + fmetadato[0] + '_metadato.xml')
-                    print('Totale notifiche scaricate: ', numero_notifiche)
-                    with open(path + '/' + fmetadato[0] + '_metadato.xml', 'wb') as f:
-                        f.write(r.content)                
-                    with open(path + '/' + fname[0], 'wb') as f:
-                        pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
-                        pbar.set_description('Scaricando ' + fname[0])
-                        for chunk in r.iter_content(chunk_size=1024):
-                            if chunk:  
-                                f.write(chunk)
-                                pbar.update(len(chunk))
-                        pbar.close()                
-        print('Totale fatture PASSIVE RICEVUTE scaricate: ', numero_fatture)
+                    if r.status_code == 200:
+                        numero_notifiche_ricevute = numero_notifiche_ricevute + 1
+                        r.raise_for_status()
+                        total_size = int(r.headers.get('content-length', 0))
+                        d = r.headers['content-disposition']
+                        fname = re.findall("filename=(.+)", d)
+                        print('Downloading metadati = ' + fname[0])
+                        print('Downloading metadati rinominato = ' + fmetadato[0] + '_metadato.xml')
+                        print('Totale notifiche scaricate: ', numero_notifiche_ricevute)
+                        with open(path + '/' + fmetadato[0] + '_metadato.xml', 'wb') as f:
+                            f.write(r.content)                
+                            with open(path + '/' + fname[0], 'wb') as f:
+                                pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
+                                pbar.set_description('Scaricando ' + fname[0])
+                                for chunk in r.iter_content(chunk_size=1024):
+                                    if chunk:  
+                                        f.write(chunk)
+                                        pbar.update(len(chunk))
+                                pbar.close()                
+            print('Totale fatture PASSIVE RICEVUTE scaricate: ', numero_fatture_ricevute , ' e notifiche ' , numero_notifiche_ricevute)
 
 
     #=============# FATTURE TRANSFRONTALIERE RICEVUTE=======#

@@ -169,14 +169,15 @@ try:
             sys.exit()
 
 
-        with open('fe_ricevute_disposizione.json', 'wb') as f:
+        with open('fe_ricevute_disposizione_' + cfcliente + '.json', 'wb') as f:
             f.write(r.content)
             print('Inizio a scaricare le fatture ricevute e messe a disposizione!')
-        path = r'FatturePassive_' + cfcliente + "_" + Dal		#la directory sarà del tipo 'ACQUISTI_0123456789_010823'
+        path = r'FatturePassive_' + cfcliente
         if not os.path.exists(path):
             os.makedirs(path)
-        with open('fe_ricevute_disposizione.json') as data_file:    
+        with open('fe_ricevute_disposizione_'+ cfcliente +'.json') as data_file:    
             data = json.load(data_file)
+            #print('Inizio a scaricare ' + str(data['totaleFatture']) + ' fatture dal ' + data['dataRicercaDa'] + ' al ' + data['dataRicercaA'] + ' per un massimo di ' + str(data['limiteBloccoTotaleFatture']) + ' fatture scaricabili.')#
             numero_fatture = 0
             numero_notifiche = 0
             for fattura in data['fatture']:
@@ -206,14 +207,14 @@ try:
              print('Scarico il json delle fatture ricevute per data di emissione per la partita IVA ' + cfcliente)
              r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fe/ricevute/dal/'+Dal+'/al/'+Al+'/ricerca/emissione?v=' + unixTime(), headers = headers)
 
-        with open('fe_ricevute.json', 'wb') as f:
+        with open('fe_ricevute_'+ cfcliente +'.json', 'wb') as f:
             f.write(r.content)
             
         print('Inizio a scaricare le fatture ricevute')
-        path = r'FatturePassive_' + cfcliente + "_" + Dal
+        path = r'FatturePassive_' + cfcliente
         if not os.path.exists(path):
             os.makedirs(path)
-        with open('fe_ricevute.json') as data_file:    
+        with open('fe_ricevute_'+ cfcliente +'.json') as data_file:    
             data = json.load(data_file)
             numero_fatture = 0
             numero_notifiche = 0
@@ -231,18 +232,18 @@ try:
         print('Totale fatture RICEVUTE scaricate: ', numero_fatture)
 
 
-    #=========================================================================================# FATTURE TRANSFRONTALIERE RICEVUTE#=========================================
+    #=============# FATTURE TRANSFRONTALIERE RICEVUTE=======#
         print('Scarico il json delle fatture  Transfrontaliere Ricevute per la Partita IVA ' + cfcliente)
         r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/ft/ricevute/dal/'+Dal+'/al/'+Al+'?v=' + unixTime(), headers = headers)
 
-        with open('fe_ricevutetr.json', 'wb') as f:
+        with open('fe_ricevutetr_'+ cfcliente +'.json', 'wb') as f:
             f.write(r.content)
             
         print('Inizio a scaricare le fatture transfrontaliere ricevute')
-        path = r'FatturePassive_' + cfcliente + "_" + Dal
+        path = r'FatturePassive_' + cfcliente
         if not os.path.exists(path):
             os.makedirs(path)
-        with open('fe_ricevutetr.json') as data_file:    
+        with open('fe_ricevutetr_'+ cfcliente +'.json') as data_file:    
             data = json.load(data_file)
             numero_fatture = 0
             numero_notifiche = 0
@@ -268,11 +269,11 @@ try:
         print('Scarico il json delle fatture Emesse per la Partita IVA ' + cfcliente)
         r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fe/emesse/dal/'+Dal+'/al/'+Al+'?v=' + unixTime(), headers = headers)
 
-        with open('fe_emesse.json', 'wb') as f:
+        with open('fe_emesse_'+ cfcliente +'.json', 'wb') as f:
             f.write(r.content)
             
         print('Inizio a scaricare le fatture emesse')
-        path = r'FattureEmesse_' + cfcliente + "_" + Dal
+        path = r'FattureEmesse_' + cfcliente
         if not os.path.exists(path):
             os.makedirs(path)
         with open('fe_emesse.json') as data_file:    
@@ -300,14 +301,14 @@ try:
         print('Scarico il json delle fatture  Transfrontaliere Emesse per la Partita IVA ' + cfcliente)
         r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/ft/emesse/dal/'+Dal+'/al/'+Al+'?v=' + unixTime(), headers = headers)
 
-        with open('fe_emessetr.json', 'wb') as f:
+        with open('fe_emessetr_'+ cfcliente +'.json', 'wb') as f:
             f.write(r.content)
             
         print('Inizio a scaricare le fatture transfrontaliere emesse')
         path = r'FattureEmesse_' + cfcliente + "_" + Dal
         if not os.path.exists(path):
             os.makedirs(path)
-        with open('fe_emessetr.json') as data_file:    
+        with open('fe_emessetr_'+ cfcliente +'.json') as data_file:    
             data = json.load(data_file)
             numero_fatture = 0
             numero_notifiche = 0

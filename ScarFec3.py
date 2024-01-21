@@ -1,7 +1,7 @@
 ## Licenza Libera progetto originario di Claudio Pizzillo
 ## Modifiche e riadattamenti da Salvatore Crapanzano
 ## 01/08/23 Altre modifiche da Uzirox## 
-## V. 3.1.1 del 21-01-2024  - Intermediari e Diretto e Studio Associato
+## V. 3.5.2 del 21-01-2024  - Intermediari e Diretto e Studio Associato
 ## 
 
 import subprocess
@@ -60,7 +60,7 @@ def decrypt_p7m_files(input_dir, output_dir):
                 print(f"Si è verificato un errore durante l'esecuzione del comando per {filename}.")
                 print("Errore:", e)
 
-# Esempio di utilizzo:
+# Esempio di utilizzo: funzione
 # decrypt_p7m_files('/percorso/alla/directory/input', '/percorso/alla/directory/output')
 
 
@@ -308,7 +308,7 @@ try:
                                         f.write(chunk)
                                         pbar.update(len(chunk))
                                 pbar.close()                
-            decrypt_p7m_files(path, pathp7m)
+            decrypt_p7m_files(path, pathp7m)# decodifica fattura p7m e copia in dir p7m
             print('Totale fatture PASSIVE RICEVUTE scaricate: ', numero_fatture_ricevute , ' e notifiche ' , numero_notifiche_ricevute)
 
 
@@ -335,9 +335,23 @@ try:
                     d = r.headers['content-disposition']
                     fname = re.findall("filename=(.+)", d)
                     print('Downloading ' + fname[0])
-                    print('Totale fatture TRANSFRONTALIERE RICEVUTE scaricate: ', numero_fatture)
+                    print('Totale Transfrontaliere fatture scaricate: ', numero_fatture)
                     with open(path + '/' + fname[0], 'wb') as f:
                         f.write(r.content)
+                        fmetadato = re.findall("filename=(.+)", d)
+                r = s.get('https://ivaservizi.agenziaentrate.gov.it/cons/cons-services/rs/fatture/file/'+fatturaFile+'?tipoFile=FILE_METADATI&download=1&v='+unixTime() , headers = headers_token )
+                if r.status_code == 200:
+                    numero_notifiche = numero_notifiche + 1
+                    d = r.headers['content-disposition']
+                    fname = re.findall("filename=(.+)", d)
+                    print('Downloading metadati = ' + fname[0])
+                    print('Downloading metadati rinominato = ' + fmetadato[0] + '_metadato.xml')
+                    print('Totale notifiche scaricate: ', numero_notifiche)
+                    with open(path + '/' + fmetadato[0] + '_metadato.xml', 'wb') as f:
+                        f.write(r.content)                
+        print('Totale fatture Ricevute TRAN ricevute scaricate: ', numero_fatture)
+        print('Totale notifiche scaricate fatture TRAN ricevute: ', numero_notifiche)
+
         print('Per il cliente: ', cfcliente)
         print('Totale fatture TRANSFRONTALIERE RICEVUTE scaricate: ', numero_fatture)
 

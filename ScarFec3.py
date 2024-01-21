@@ -276,7 +276,7 @@ try:
         path = r'FattureEmesse_' + cfcliente
         if not os.path.exists(path):
             os.makedirs(path)
-        with open('fe_emesse.json') as data_file:    
+        with open('fe_emesse_'+ cfcliente +'.json') as data_file:    
             data = json.load(data_file)
             numero_fatture = 0
             numero_notifiche = 0

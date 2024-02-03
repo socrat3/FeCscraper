@@ -12,4 +12,4 @@ lanciare da prompot
 ScarFec4.py T123456 674C12345 KKKKK123 09081640845 01122023 03022024 VLLVCN87A55A089X 01521820949 3 TUTTI
 
 Dovete scaricare python per windows e i moduli che vengono richiamati. La licenza è GPL se fate delle modifiche condividetele inviandole alla mia email o su git
-per decodificare file p7m dovete installare
+per decodificare file p7m dovete installare FireDaemon-OpenSSL-x64-3.2.1.exe

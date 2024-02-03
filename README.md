@@ -1,6 +1,10 @@
-# Downloader Fatture elettroniche e i modelli f24 bolli
+# Downloader Fatture elettroniche passive ed attive (acquisto e vendite) per tutti i periodi
 
-La nuova versione funzione ScarFec4.py è sempre a riga di comando e scarica per la singola azienda per un periodo (anche superiore al trimestre) tutte le fatture emesse e ricevute e quelòle a disposizione e estere. Sono state implementate. I profili sono sempre INCARIO DIRETTO E studio associato o ME stesso. La sintassi è stata modificata.
+La nuova versione - pensata da un dott. commercialista per commercialisti ma anche per uso aziendale - funziona per scaricare tutte le fatture (passive ed attive italiane ed estere a disposizione e non e per decodificare il file p7m in xml) con lo scaricamento del file delle notifiche. La versione è notevolmente migliorata da un punto di vista grafico e della velocità.
+
+ScarFec4.py è sempre a riga di comando e scarica per la singola azienda per un periodo (anche superiore al trimestre) tutte le fatture emesse e ricevute e quelle a disposizione ed estere. Sono state implementate. I profili sono sempre INCARIO DIRETTO E studio associato o ME stesso. La sintassi è stata modificata.
+
+Se avete uno studio associato dovete modificare il profilo nel file
 
 es.
 ScarFec4.py TXXXXX PIN_entratel PASSWORDN_ENTRATEL P_IVA_STUDIO_COMMERCIALISTA 01122023 03022024 CF_CLIENTE P_IVA_CLIENTE 3 TUTTI

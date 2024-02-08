@@ -18,25 +18,34 @@ import os
 import shutil
 from clint.textui import colored, puts
 from tqdm import *
-import pandas as pd
+# import pandas as pd
+
+def aggiusta_fine_trimestre(d):
+    #aggiusta fine trimestre
+    if d.month < 4:
+        return datetime(d.year, 3, 31)
+    elif d.month < 7:
+        return datetime(d.year, 6, 30)
+    elif d.month < 10:
+        return datetime(d.year, 9, 30)
+    else:
+        return datetime(d.year, 12, 31)
 
 # Funzione per calcolare la differenza in giorni tra due date
-def differenza_giorni(data_iniziale, data_finale):
-    d1 = datetime.strptime(data_iniziale, "%d%m%Y")
-    d2 = datetime.strptime(data_finale, "%d%m%Y")
-    return (d2 - d1).days
-
-# Funzione per dividere il periodo in trimestri
 def divide_in_trimestri(data_iniziale, data_finale):
     d1 = datetime.strptime(data_iniziale, "%d%m%Y")
     d2 = datetime.strptime(data_finale, "%d%m%Y")
     trimestri = []
+    
     while d1 < d2:
-        fine_trimestre = d1 + timedelta(days=92)
-        if fine_trimestre > d2:
-            fine_trimestre = d2
-        trimestri.append((d1.strftime("%d%m%Y"), fine_trimestre.strftime("%d%m%Y")))
+        fine_trimestre = aggiusta_fine_trimestre(d1)
+        if fine_trimestre >= d2:
+            trimestri.append((d1.strftime("%d%m%Y"), d2.strftime("%d%m%Y")))
+            break
+        else:
+            trimestri.append((d1.strftime("%d%m%Y"), fine_trimestre.strftime("%d%m%Y")))
         d1 = fine_trimestre + timedelta(days=1)
+    
     return trimestri
 
 # funzizone di decodifica file P7m

@@ -1,7 +1,7 @@
 ## Licenza Libera progetto originario di Claudio Pizzillo
 ## Modifiche e riadattamenti da Salvatore Crapanzano
 ## 01/08/23 Altre modifiche da Uzirox## 
-## V. 4.1.9 del 09-02-2024  - Intermediari e Diretto e Studio Associato
+## V. 4.1. del 09-02-2024  - Intermediari e Diretto e Studio Associato
 ## 
 
 import subprocess

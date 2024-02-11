@@ -1,5 +1,5 @@
 # gestione fatture elettroniche di Salvatore Crapanzano
-# 0.3 del11/02/2024
+# 0.4 del11/02/2024
 from pywebio.input import *
 from pywebio.output import *
 from pywebio import start_server
@@ -19,12 +19,20 @@ def main_menu():
     put_buttons(['Aggiungi Record', 'Visualizza Record', 'Aggiorna Record', 'Elimina Record', 'Esporta in PDF', 'Imposta Visualizzazione Record'], onclick=[add_record, lambda: fetch_and_display_records(50), update_record, delete_record, export_records_to_pdf, set_records_view])
     fetch_and_display_records()
 
-def fetch_and_display_records(limit=50, offset=0):
+def fetch_and_display_records(limit=3, offset=0):
     """Fetch records from the database and display them in a table, with pagination."""
-    if limit == 'tutti':
-        c.execute("SELECT * FROM records")
-    else:
-        c.execute("SELECT * FROM records LIMIT ? OFFSET ?", (limit, offset))
+    # Calcola il numero totale di record per determinare il numero di pagine
+    c.execute("SELECT COUNT(*) FROM records")
+    total_records = c.fetchone()[0]
+    total_pages = (total_records + limit - 1) // limit  # Arrotonda per eccesso
+    
+    if offset < 0:
+        offset = 0  # Previene offset negativo
+    elif offset >= total_records:
+        offset = max(0, total_records - limit)  # Previene offset oltre l'ultimo record
+    
+    # Fetch records with limit and offset
+    c.execute("SELECT * FROM records LIMIT ? OFFSET ?", (limit, offset))
     records = c.fetchall()
 
     # Clears only the table area, not the entire page
@@ -34,8 +42,19 @@ def fetch_and_display_records(limit=50, offset=0):
         # Display records in a table
         table_data = [['ID', 'Nome', 'Età']] + [[str(record[0]), record[1], str(record[2])] for record in records]
         put_table(table_data, scope='records_table')
+        
+        # Pagination buttons
+        page_buttons = []
+        if offset > 0:
+            page_buttons.append(put_button("Precedente", onclick=lambda: fetch_and_display_records(limit, offset-limit)))
+        if offset + limit < total_records:
+            page_buttons.append(put_button("Successivo", onclick=lambda: fetch_and_display_records(limit, offset+limit)))
+        
+        if page_buttons:
+            put_row(page_buttons, scope='records_table')
     else:
         put_text("Nessun record trovato.", scope='records_table')
+        
 def set_records_view():
 
     """Allows the user to set how many records to view."""
@@ -154,12 +173,12 @@ def export_records_to_pdf():
     put_file(filename, os.path.getsize(filename), 'Scarica PDF')
 
 def main_menu():
-    """Mostra il menu principale e visualizza sempre la tabella dei record sotto."""
+    """Mostra il menu principale."""
     clear()
-    put_buttons(['Aggiungi Record', 'Visualizza Record', 'Aggiorna Record', 'Elimina Record', 'Esporta in PDF', 'Imposta Visualizzazione Record'], onclick=[add_record, lambda: fetch_and_display_records(50), update_record, delete_record, export_records_to_pdf, set_records_view])
-    # Scope dedicato per la tabella dei record
+    put_buttons(['Aggiungi Record', 'Visualizza Record', 'Aggiorna Record', 'Elimina Record', 'Esporta in PDF'], onclick=[add_record, view_records, update_record, delete_record, export_records_to_pdf])
+    # Inserisci uno scope dedicato per la tabella dei record sotto il menu
     put_scope('records_table')
-    # Chiamata iniziale per popolare la tabella con i primi 50 record
+    # Visualizza la tabella dei record di default
     fetch_and_display_records()
     
 if __name__ == '__main__':

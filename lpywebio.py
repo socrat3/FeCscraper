@@ -1,5 +1,5 @@
 # gestione fatture elettroniche di Salvatore Crapanzano
-# 0.1 del11/02/2024
+# 0.2 del11/02/2024
 from pywebio.input import *
 from pywebio.output import *
 from pywebio import start_server
@@ -48,17 +48,25 @@ def update_record():
     toast('Record aggiornato con successo!')
 
 def delete_record():
-    """Elimina un record dopo conferma."""
+    """Elimina un record dopo conferma, mostrando ID e nome."""
     id = input("Inserisci l'ID del record da eliminare", type=NUMBER)
     
-    # Chiedi conferma prima di procedere con l'eliminazione
-    confirm = actions('Confermi di voler eliminare il record?', ['Sì', 'No'])
-    if confirm == 'Sì':
-        c.execute("DELETE FROM records WHERE id = ?", (id,))
-        conn.commit()
-        toast('Record eliminato con successo!')
+    # Recupera il nome del record da eliminare per mostrarlo nel messaggio di conferma
+    c.execute("SELECT name FROM records WHERE id = ?", (id,))
+    result = c.fetchone()
+    
+    if result:
+        name = result[0]
+        # Chiedi conferma mostrando ID e nome
+        confirm = actions(f'Confermi di voler eliminare il record con ID {id} e nome "{name}"?', ['Sì', 'No'])
+        if confirm == 'Sì':
+            c.execute("DELETE FROM records WHERE id = ?", (id,))
+            conn.commit()
+            toast('Record eliminato con successo!')
+        else:
+            toast('Eliminazione annullata.')
     else:
-        toast('Eliminazione annullata.')
+        toast("Fattura non non trovata. Riprova!")
         
 def export_records_to_pdf():
     """Esporta tutti i record in un file PDF."""

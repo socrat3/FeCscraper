@@ -11,9 +11,9 @@ def extract_complete_data(xml_path):
     root = tree.getroot()
     
     cedente_piva = root.find('.//CedentePrestatore/DatiAnagrafici/IdFiscaleIVA/IdCodice').text
-    cedente_denominazione = root.find('.//CedentePrestatore/DatiAnagrafici/Anagrafica/Cognome').text if root.find('.//CedentePrestatore/DatiAnagrafici/Anagrafica/Denominazione') is not None else "N/A"
+    cedente_denominazione = root.find('.//CedentePrestatore/DatiAnagrafici/Anagrafica/Cognome').text
     cessionario_piva = root.find('.//CessionarioCommittente/DatiAnagrafici/IdFiscaleIVA/IdCodice').text
-    cessionario_denominazione = root.find('.//CessionarioCommittente/DatiAnagrafici/Anagrafica/Cognome').text if root.find('.//CessionarioCommittente/DatiAnagrafici/Anagrafica/Denominazione') is not None else "N/A"
+    cessionario_denominazione = root.find('.//CessionarioCommittente/DatiAnagrafici/Anagrafica/Cognome').text
     
     numero_fattura = root.find('.//FatturaElettronicaBody/DatiGenerali/DatiGeneraliDocumento/Numero').text
     data_fattura = root.find('.//FatturaElettronicaBody/DatiGenerali/DatiGeneraliDocumento/Data').text

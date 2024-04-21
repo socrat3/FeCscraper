@@ -1,7 +1,7 @@
 ## Licenza Libera progetto originario di Claudio Pizzillo
 ## Modifiche e riadattamenti da Salvatore Crapanzano
 ## 01/08/23 Altre modifiche da Uzirox## 
-## V. 4.1. del 09-02-2024  - Intermediari e Diretto e Studio Associato
+## V. 4.1.8 del 21-04-2024  - Intermediari e Diretto e Studio Associato
 ## 
 
 import subprocess
@@ -18,12 +18,8 @@ import os
 import shutil
 from clint.textui import colored, puts
 from tqdm import *
-
-# Sostituisci con il percorso effettivo della directory contenente i file JSON
-directory_da_pulire = 'c:\\scarica'  # Usa doppie barre rovesciate
-# Oppure puoi usare: directory_da_pulire = 'c:/scarica'  # Usa barre normali
-
-
+debug = 1 # mettere uni se vuoi conservare il nome file metadato originiale
+# import pandas as pd
 
 def aggiusta_fine_trimestre(d):
     #aggiusta fine trimestre
@@ -35,11 +31,6 @@ def aggiusta_fine_trimestre(d):
         return datetime(d.year, 9, 30)
     else:
         return datetime(d.year, 12, 31)
-    # Controllo se l'anno è bisestile e aggiusto la fine del trimestre di conseguenza
-    if d.year % 4 == 0 and (d.year % 100 != 0 or d.year % 400 == 0):
-        if d.month == 2 and d.day == 29:
-            fine_trimestre = datetime(d.year, 2, 29)
-    return fine_trimestre
 
 # Funzione per calcolare la differenza in giorni tra due date
 def divide_in_trimestri(data_iniziale, data_finale):
@@ -57,6 +48,7 @@ def divide_in_trimestri(data_iniziale, data_finale):
         d1 = fine_trimestre + timedelta(days=1)
     
     return trimestri
+
 # funzizone di decodifica file P7m
 def decrypt_p7m_files(input_dir, output_dir):
     """
@@ -103,22 +95,7 @@ def decrypt_p7m_files(input_dir, output_dir):
             shutil.copy(file_path, output_dir)
 # Esempio di utilizzo: funzione
 # decrypt_p7m_files('/percorso/alla/directory/input', '/percorso/alla/directory/output')
-# Elimina i file json inseriti nel percorso c:\scarica e la crea se non esiste 
-def elimina_file_json(directory):
-    """
-    Rimuove tutti i file con estensione .json nella directory specificata.
-    """
-    # Verifica se la directory esiste. Se non esiste, la crea.
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-        print(f"Creata la directory: {directory}")
-    
-    for filename in os.listdir(directory):
-        if filename.endswith(".json"):
-            os.remove(os.path.join(directory, filename))
-            print(f"Rimosso il file: {filename}")
 
-elimina_file_json(directory_da_pulire)
 def scaricaemesse(tipo):
     if tipo == 1:
     # r = s.get('https://ivaservizi.agenziaentrate.gov.it/ser/api/monitoraggio/v1/monitoraggio/fatture/?v='+unixTime()+'&idFiscCedente=&idFiscDestinatario=&idFiscEmittente=&idFiscTrasmittente=&idSdi=&perPage=10&start=1&statoFile=&tipoFattura=EMESSA')
@@ -172,23 +149,26 @@ def scaricaemesse(tipo):
                     d = r.headers['content-disposition'] # viene commentato per evitare di duplicare file metadato, nome originale
                     fname = re.findall("filename=(.+)", d)
                     print('Downloading metadati nome originale = ' + fname[0])
+                    #fname[0] = fmetadato[0]  + '_metadato.xml'
                     print('Downloading metadati rinominato col nome fattura = ' + fmetadato[0] + '_metadato.xml')
                     print('Totale notifiche scaricate: ', numero_notifiche_ricevute)
                     with open(path + '/' + fmetadato[0] + '_metadato.xml', 'wb') as f:
                         f.write(r.content)                
-                        with open(path + '/' + fname[0], 'wb') as f:
-                            pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
-                            pbar.set_description('Sto scaricando ->' + fname[0])
-                            for chunk in r.iter_content(chunk_size=1024):
-                                if chunk:  
-                                    f.write(chunk)
-                                    pbar.update(len(chunk))
-                            pbar.close()                
+                        if debug == 1:
+                            print("Scarico e conservo il file METADATI COL NOME ORIGINALE")
+                            with open(path + '/' + fname[0], 'wb') as f:
+                                pbar = tqdm(total=total_size, unit='B', unit_divisor=1024, unit_scale=True, ascii=True)
+                                pbar.set_description('Sto scaricando ->' + fname[0])
+                                for chunk in r.iter_content(chunk_size=1024):
+                                    if chunk:  
+                                        f.write(chunk)
+                                        pbar.update(len(chunk))
+                                pbar.close()                
         decrypt_p7m_files(path, pathp7m)# decodifica fattura p7m e copia in dir p7m
         with open('output_fatture.txt', 'a') as file:
             print('Trimestri', trimestri, file=file)
             print('Totale fatture PASSIVE RICEVUTE scaricate: ', numero_fatture_ricevute , ' e notifiche ' , numero_notifiche_ricevute, file=file)
-
+        
     
 def unixTime():
     dt = datetime.now(tz=pytz.utc)
@@ -598,5 +578,5 @@ try:
 
 except KeyboardInterrupt:
     print("Programma INTERROTTO manualmente!")
-elimina_file_json(directory_da_pulire)
+
 sys.exit()

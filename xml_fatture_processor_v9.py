@@ -1316,6 +1316,78 @@ class AdvancedFileOrganizer:
         self.clients_config = config.get('portfolio_clienti', {})
         self.config_manager = ConfigManager()  # Per accesso ai metodi di risoluzione
 
+    def organize_downloaded_files(self, download_results: Dict[str, List[DownloadResult]],
+                                      decode: bool = True) -> OrganizationResult:
+            """
+            VERSIONE CORRETTA E ROBUSTA: Organizza i file scaricati senza doppia decodifica
+            o analisi del percorso, basandosi su dati certi.
+            """
+            result = OrganizationResult(success=True)
+
+            try:
+                # Calcola il totale dei file effettivamente scaricati da processare
+                files_to_process = [
+                    res for client_res in download_results.values() for res in client_res
+                    if res.success and res.file_path and res.file_path.exists()
+                ]
+                total_files = len(files_to_process)
+
+                with tqdm(total=total_files, desc="Organizzazione Avanzata", unit="file") as pbar:
+                    # Itera su tutti i client e i rispettivi risultati
+                    for client_id, results in download_results.items():
+                        client_folders = []
+
+                        for download_result in results:
+                            # Salta i file non scaricati o non più esistenti
+                            if not (download_result.success and download_result.file_path and download_result.file_path.exists()):
+                                continue
+
+                            pbar.update(1) # Aggiorna la barra di avanzamento per ogni file processato
+
+                            # La funzione di elaborazione ora restituisce 3 valori, incluso l'xml_content.
+                            proc_result, parsed_data, xml_content = self.process_single_file_advanced(download_result.file_path)
+
+                            if proc_result.status == "OK" and parsed_data and xml_content:
+                                
+                                # La funzione di salvataggio usa i dati certi che già possediamo.
+                                success = self.save_organized_file_advanced(
+                                    download_result.file_path,
+                                    xml_content,
+                                    parsed_data,
+                                    proc_result,
+                                    client_id
+                                )
+
+                                if success:
+                                    result.organized_files += 1
+                                    if proc_result.method_used != "NONE":
+                                        result.decoding_stats[proc_result.method_used] = result.decoding_stats.get(proc_result.method_used, 0) + 1
+                                    
+                                    # Aggiungi la cartella al report finale
+                                    client_config = self.clients_config.get(client_id, {})
+                                    client_personalized_name = self.get_client_personalized_name(client_id)
+                                    direction = self.determine_invoice_direction(parsed_data, client_config)
+                                    year = parsed_data.get('invoice_year', str(datetime.now().year))
+                                    folder_info = f"{client_personalized_name}/{direction}/{year}"
+                                    if folder_info not in client_folders:
+                                        client_folders.append(folder_info)
+                                else:
+                                    result.errors.append(f"Errore salvataggio {download_result.file_path.name}")
+                            
+                            elif proc_result.status != "SKIPPED":
+                                result.errors.append(f"Errore elaborazione {download_result.file_path.name}: {proc_result.error_message}")
+
+                        result.client_folders_created[client_id] = client_folders
+
+                return result
+
+            except Exception as e:
+                result.success = False
+                result.errors.append(str(e))
+                import traceback
+                self.logger.error(traceback.format_exc())
+                return result
+
     def get_client_name(self, client_id: str) -> str:
         client_data = self.clients_config.get(client_id, {})
         return client_data.get('nome_azienda', client_id)
@@ -1383,371 +1455,288 @@ class AdvancedFileOrganizer:
 
         return structure
 
-    def process_single_file_advanced(self, file_path: Path, is_temp: bool = False) -> Tuple[AdvancedProcessingResult, Optional[Dict]]:
-        """Processa singolo file con sistema avanzato."""
-        start_time = time.time()
-        result = AdvancedProcessingResult(
-            file_name=file_path.name,
-            status="KO",
-            method_used="NONE",
-            original_size=file_path.stat().st_size if file_path.exists() else 0
-        )
+    def process_single_file_advanced(self, file_path: Path, is_temp: bool = False) -> Tuple[AdvancedProcessingResult, Optional[Dict], Optional[str]]:
+            """Processa singolo file con sistema avanzato e return a 3 valori coerente."""
+            start_time = time.time()
+            result = AdvancedProcessingResult(
+                file_name=file_path.name,
+                status="KO",
+                method_used="NONE",
+                original_size=file_path.stat().st_size if file_path.exists() else 0
+            )
+            xml_content = None # Inizializza xml_content
 
-        try:
-            # Determina tipo file
-            file_type = determine_file_type(file_path)
-            result.file_type = file_type
+            try:
+                # Determina tipo file
+                file_type = determine_file_type(file_path)
+                result.file_type = file_type
 
-            if file_type == "UNSUPPORTED":
-                result.status = "SKIPPED"
-                result.error_message = "Tipo file non supportato"
-                result.execution_time = time.time() - start_time
-                return result, None
-
-            # Calcola hash
-            result.hash_md5 = calculate_file_hash(file_path, 'md5')
-            result.hash_sha256 = calculate_file_hash(file_path, 'sha256')
-
-            # Estrae XML
-            xml_content = None
-            decoding_method = "NONE"
-
-            if file_path.suffix.lower() == '.p7m':
-                # Usa decodifica avanzata
-                temp_dir = file_path.parent / 'temp_decode'
-                decode_result = self.decoder.decrypt_p7m_file_enhanced(file_path, temp_dir)
-
-                result.decoding_attempts = [attempt['method'] for attempt in decode_result.attempt_chain]
-
-                if decode_result.success and decode_result.xml_content:
-                    xml_content = decode_result.xml_content
-                    decoding_method = decode_result.method_used
-                    result.decoded_size = decode_result.output_size
-
-                    # Cleanup temp
-                    try:
-                        shutil.rmtree(temp_dir)
-                    except:
-                        pass
-                else:
-                    result.error_message = f"Decodifica P7M fallita: {'; '.join(decode_result.error_details[:3])}"
-                    result.execution_time = time.time() - start_time
-                    return result, None
-            else:
-                xml_content = file_path.read_text(encoding='utf-8', errors='ignore')
-                decoding_method = "DIRECT_XML"
-                result.decoded_size = result.original_size
-
-            result.method_used = decoding_method
-
-            # Controlla duplicati
-            if self.config.get('elaborazione', {}).get('gestione_duplicati_avanzata', True):
-                is_dup, dup_key = self.duplicate_manager.is_duplicate(file_path, xml_content)
-                if is_dup:
+                if file_type == "UNSUPPORTED":
                     result.status = "SKIPPED"
-                    result.is_duplicate = True
-                    result.error_message = f"Duplicato: {dup_key[:32]}..."
+                    result.error_message = "Tipo file non supportato"
                     result.execution_time = time.time() - start_time
-                    return result, None
+                    # CORREZIONE: Restituisce sempre 3 valori
+                    return result, None, None
 
-            # Parsing specifico per tipo
-            parsed_data = None
+                # Calcola hash
+                result.hash_md5 = calculate_file_hash(file_path, 'md5')
+                result.hash_sha256 = calculate_file_hash(file_path, 'sha256')
 
-            if file_type == "NOTIFICATION":
-                notification_data = parse_notification_xml(xml_content, file_path.name)
-                if notification_data and notification_data.get("status") == "OK":
-                    parsed_data = notification_data
-                    result.company_name = "RICEVUTE_SDI"
+                # Estrae XML
+                decoding_method = "NONE"
+
+                if file_path.suffix.lower() == '.p7m':
+                    # Usa decodifica avanzata
+                    temp_dir = file_path.parent / 'temp_decode'
+                    decode_result = self.decoder.decrypt_p7m_file_enhanced(file_path, temp_dir)
+
+                    result.decoding_attempts = [attempt['method'] for attempt in decode_result.attempt_chain]
+
+                    if decode_result.success and decode_result.xml_content:
+                        xml_content = decode_result.xml_content
+                        decoding_method = decode_result.method_used
+                        result.decoded_size = decode_result.output_size
+
+                        # Cleanup temp
+                        try:
+                            shutil.rmtree(temp_dir)
+                        except:
+                            pass
+                    else:
+                        result.error_message = f"Decodifica P7M fallita: {'; '.join(decode_result.error_details[:3])}"
+                        result.execution_time = time.time() - start_time
+                        # CORREZIONE: Restituisce sempre 3 valori
+                        return result, None, None
                 else:
-                    result.error_message = "Parsing ricevuta fallito"
-                    result.execution_time = time.time() - start_time
-                    return result, None
+                    xml_content = file_path.read_text(encoding='utf-8', errors='ignore')
+                    decoding_method = "DIRECT_XML"
+                    result.decoded_size = result.original_size
 
-            elif file_type == "METADATA":
-                # Metadati - salva direttamente
-                result.company_name = "METADATI"
+                result.method_used = decoding_method
+
+                # Controlla duplicati
+                if self.config.get('elaborazione', {}).get('gestione_duplicati_avanzata', True):
+                    is_dup, dup_key = self.duplicate_manager.is_duplicate(file_path, xml_content)
+                    if is_dup:
+                        result.status = "SKIPPED"
+                        result.is_duplicate = True
+                        result.error_message = f"Duplicato: {dup_key[:32]}..."
+                        result.execution_time = time.time() - start_time
+                        # CORREZIONE: Restituisce sempre 3 valori
+                        return result, None, xml_content
+
+                # Parsing specifico per tipo
+                parsed_data = None
+
+                if file_type == "NOTIFICATION":
+                    notification_data = parse_notification_xml(xml_content, file_path.name)
+                    if notification_data and notification_data.get("status") == "OK":
+                        parsed_data = notification_data
+                        result.company_name = "RICEVUTE_SDI"
+                    else:
+                        result.error_message = "Parsing ricevuta fallito"
+                        result.execution_time = time.time() - start_time
+                        # CORREZIONE: Restituisce sempre 3 valori
+                        return result, None, xml_content
+
+                elif file_type == "METADATA":
+                    # Metadati - salva direttamente
+                    result.company_name = "METADATI"
+                    result.status = "OK"
+                    parsed_data = {"type": "metadata", "content": xml_content}
+
+                elif file_type == "INVOICE":
+                    invoice_data = parse_invoice_xml_advanced(xml_content)
+                    if invoice_data:
+                        parsed_data = invoice_data
+                        result.company_name = "FATTURA"
+                        result.invoice_year = invoice_data.get('invoice_year')
+                        result.has_ritenuta = invoice_data.get('has_ritenuta', False)
+                        result.importo_ritenuta = invoice_data.get('importo_ritenuta', 0.0)
+                        result.has_cassa_previdenza = invoice_data.get('has_cassa', False)
+                        result.importo_cassa_previdenza = invoice_data.get('importo_cassa', 0.0)
+                    else:
+                        result.error_message = "Parsing fattura fallito o non del portfolio"
+                        result.execution_time = time.time() - start_time
+                        # CORREZIONE: Restituisce sempre 3 valori
+                        return result, None, xml_content
+
                 result.status = "OK"
-                parsed_data = {"type": "metadata", "content": xml_content}
+                result.execution_time = time.time() - start_time
+                # Il return in caso di successo era già corretto
+                return result, parsed_data, xml_content
 
-            elif file_type == "INVOICE":
-                invoice_data = parse_invoice_xml_advanced(xml_content)
-                if invoice_data:
-                    parsed_data = invoice_data
-                    result.company_name = "FATTURA"  # Sarà determinato dal parser portfolio
-                    result.invoice_year = invoice_data.get('invoice_year')
-                    result.has_ritenuta = invoice_data.get('has_ritenuta', False)
-                    result.importo_ritenuta = invoice_data.get('importo_ritenuta', 0.0)
-                    result.has_cassa_previdenza = invoice_data.get('has_cassa', False)
-                    result.importo_cassa_previdenza = invoice_data.get('importo_cassa', 0.0)
-                else:
-                    result.error_message = "Parsing fattura fallito o non del portfolio"
-                    result.execution_time = time.time() - start_time
-                    return result, None
-
-            result.status = "OK"
-            result.execution_time = time.time() - start_time
-            return result, parsed_data
-
-        except Exception as e:
-            result.error_message = f"Errore elaborazione: {str(e)}"
-            result.execution_time = time.time() - start_time
-            self.logger.error(f"Errore elaborazione {file_path.name}: {e}")
-            return result, None
+            except Exception as e:
+                result.error_message = f"Errore elaborazione: {str(e)}"
+                result.execution_time = time.time() - start_time
+                self.logger.error(f"Errore elaborazione {file_path.name}: {e}")
+                # CORREZIONE: Restituisce sempre 3 valori
+                return result, None, xml_content
 
     def save_organized_file_advanced(self, file_path: Path, xml_content: str, parsed_data: Dict,
-                                   result: AdvancedProcessingResult, client_id: str = None) -> bool:
-        """CORREZIONE: Salva file organizzato con metadati avanzati e directory personalizzate."""
+                                       result: AdvancedProcessingResult, client_id: str = None) -> bool:
+        """CORREZIONE COMPLETA: Salva file organizzato con metadati avanzati, directory personalizzate e archiviazione robusta di tutti i file originali."""
         try:
+            # CORREZIONE: Usa strip_all_suffixes per gestire nomi come .xml.p7m
+            base_name = strip_all_suffixes(file_path)
+            
+            # Inizializza le variabili per evitare errori
+            structure = None
+            client_personalized_name = "N/D"
+            year = str(datetime.now().year)
+
             if result.file_type == "INVOICE":
-                # CORREZIONE: Determina cliente dal portfolio
                 if not client_id:
-                    # Prova a risolvere dal portfolio usando P.IVA/CF
                     cedente_piva = parsed_data.get('cedente_partita_iva')
                     cessionario_piva = parsed_data.get('cessionario_partita_iva')
                     cedente_cf = parsed_data.get('cedente_id_fiscale')
                     cessionario_cf = parsed_data.get('cessionario_id_fiscale')
 
-                    # Prova con cessionario prima (fatture ricevute più comuni)
                     client_id = self.config_manager.resolve_client_by_tax_id(cessionario_piva, cessionario_cf)
                     if not client_id:
-                        # Prova con cedente (fatture emesse)
                         client_id = self.config_manager.resolve_client_by_tax_id(cedente_piva, cedente_cf)
-
                     if not client_id:
                         client_id = "Cliente_Sconosciuto"
 
                 client_config = self.clients_config.get(client_id, {})
                 year = parsed_data.get('invoice_year', str(datetime.now().year))
-
-                # CORREZIONE: Determina direzione correttamente
                 direction = self.determine_invoice_direction(parsed_data, client_config)
-
-                # CORREZIONE: Usa nome personalizzato directory
                 client_personalized_name = self.get_client_personalized_name(client_id) if client_id != "Cliente_Sconosciuto" else client_id
                 structure = self.create_client_structure(client_personalized_name, direction, int(year))
 
             elif result.file_type == "NOTIFICATION":
-                # Ricevute SDI
                 client_personalized_name = "Ricevute_SDI"
-                year = str(datetime.now().year)
                 structure = self.create_client_structure(client_personalized_name, "RICEVUTE", int(year))
 
             elif result.file_type == "METADATA":
-                # Metadati
                 client_personalized_name = "Metadati_Generici"
-                year = str(datetime.now().year)
                 structure = self.create_client_structure(client_personalized_name, "METADATI", int(year))
 
-            base_name = safe_filename(file_path.stem)
+            # CORREZIONE: Controllo di sicurezza se la struttura non è stata creata
+            if not structure:
+                self.logger.error(f"Impossibile determinare la struttura di salvataggio per {file_path.name}")
+                return False
 
-            # CORREZIONE: Genera metadati completi con schema versione SENZA DUPLICAZIONI
+            # Creazione del dizionario completo per il JSON
             metadata = {
-                "schema_version": JSON_SCHEMA_VERSION,
-                "id": str(uuid.uuid4()),
-                "fileName": file_path.name,
+                "schema_version": JSON_SCHEMA_VERSION, "id": str(uuid.uuid4()), "fileName": file_path.name,
                 "fileType": result.file_type,
-                "company": {
-                    "name": client_personalized_name,
-                    "client_id": client_id if 'client_id' in locals() else None
-                },
+                "company": {"name": client_personalized_name, "client_id": client_id if client_id else None},
                 "processing": {
-                    "method_used": result.method_used,
-                    "decoding_attempts": result.decoding_attempts,
-                    "file_hash_md5": result.hash_md5,
-                    "file_hash_sha256": result.hash_sha256,
-                    "original_size": result.original_size,
-                    "decoded_size": result.decoded_size,
-                    "execution_time": result.execution_time,
-                    "processed_at": datetime.now(timezone.utc).isoformat()
+                    "method_used": result.method_used, "decoding_attempts": result.decoding_attempts,
+                    "file_hash_md5": result.hash_md5, "file_hash_sha256": result.hash_sha256,
+                    "original_size": result.original_size, "decoded_size": result.decoded_size,
+                    "execution_time": result.execution_time, "processed_at": datetime.now(timezone.utc).isoformat()
                 }
             }
 
-            # CORREZIONE: Aggiungi SOLO i dati richiesti se fattura (no duplicazioni con parsedData)
+            # Popolamento dei dati specifici per tipo di file
             if result.file_type == "INVOICE" and parsed_data:
-                # Dati anagrafici essenziali
+                # CORREZIONE: Gestione sicura della data None
+                invoice_date_obj = parsed_data.get('invoice_date')
                 metadata["document_data"] = {
                     "numero_fattura": parsed_data.get('invoice_number', 'N/D'),
-                    "data_emissione": parsed_data.get('invoice_date').isoformat() if parsed_data.get('invoice_date') else None,
+                    "data_emissione": invoice_date_obj.isoformat() if invoice_date_obj else None,
                     "anno_fattura": parsed_data.get('invoice_year', str(datetime.now().year))
                 }
-
                 metadata["soggetti"] = {
                     "cedente": {
-                        "denominazione": parsed_data.get('cedente_denominazione', 'N/D'),
-                        "nome": parsed_data.get('cedente_nome', ''),
-                        "cognome": parsed_data.get('cedente_cognome', ''),
-                        "partita_iva": parsed_data.get('cedente_partita_iva', 'N/D'),
+                        "denominazione": parsed_data.get('cedente_denominazione', 'N/D'), "nome": parsed_data.get('cedente_nome', ''),
+                        "cognome": parsed_data.get('cedente_cognome', ''), "partita_iva": parsed_data.get('cedente_partita_iva', 'N/D'),
                         "codice_fiscale": parsed_data.get('cedente_id_fiscale', 'N/D')
                     },
                     "cessionario": {
-                        "denominazione": parsed_data.get('cessionario_denominazione', 'N/D'),
-                        "nome": parsed_data.get('cessionario_nome', ''),
-                        "cognome": parsed_data.get('cessionario_cognome', ''),
-                        "partita_iva": parsed_data.get('cessionario_partita_iva', 'N/D'),
+                        "denominazione": parsed_data.get('cessionario_denominazione', 'N/D'), "nome": parsed_data.get('cessionario_nome', ''),
+                        "cognome": parsed_data.get('cessionario_cognome', ''), "partita_iva": parsed_data.get('cessionario_partita_iva', 'N/D'),
                         "codice_fiscale": parsed_data.get('cessionario_id_fiscale', 'N/D')
                     }
                 }
-
-                # DATI FISCALI RICHIESTI (no duplicazioni)
                 metadata["fiscal_data"] = {
-                    "has_ritenuta": parsed_data.get('has_ritenuta', False),
-                    "importo_ritenuta": parsed_data.get('importo_ritenuta', 0.0),
-                    "tipo_ritenuta": parsed_data.get('tipo_ritenuta', 'N/D'),
-                    "has_cassa_previdenza": parsed_data.get('has_cassa', False),
-                    "importo_cassa_previdenza": parsed_data.get('importo_cassa', 0.0),
-                    "aliquote_iva": parsed_data.get('aliquote_iva', []),
-                    "totale_fattura": parsed_data.get('total_amount', 0.0),
-                    "importo_pagato": parsed_data.get('dati_pagamento', {}).get('importo_pagamento', 0.0),
-                    "iban": parsed_data.get('dati_pagamento', {}).get('iban', ''),
-                    "bic": parsed_data.get('dati_pagamento', {}).get('bic', ''),
-                    "istituto_finanziario": parsed_data.get('dati_pagamento', {}).get('istituto', ''),
-                    "modalita_pagamento": parsed_data.get('dati_pagamento', {}).get('dettaglio_pagamento', [])
+                    "has_ritenuta": parsed_data.get('has_ritenuta', False), "importo_ritenuta": parsed_data.get('importo_ritenuta', 0.0),
+                    "tipo_ritenuta": parsed_data.get('tipo_ritenuta', 'N/D'), "has_cassa_previdenza": parsed_data.get('has_cassa', False),
+                    "importo_cassa_previdenza": parsed_data.get('importo_cassa', 0.0), "aliquote_iva": parsed_data.get('aliquote_iva', []),
+                    "totale_fattura": parsed_data.get('total_amount', 0.0), "importo_pagato": parsed_data.get('dati_pagamento', {}).get('importo_pagamento', 0.0),
+                    "iban": parsed_data.get('dati_pagamento', {}).get('iban', ''), "bic": parsed_data.get('dati_pagamento', {}).get('bic', ''),
+                    "istituto_finanziario": parsed_data.get('dati_pagamento', {}).get('istituto', ''), "modalita_pagamento": parsed_data.get('dati_pagamento', {}).get('dettaglio_pagamento', [])
                 }
+            elif result.file_type == "NOTIFICATION" and parsed_data:
+                metadata["notification_data"] = parsed_data
+            elif result.file_type == "METADATA" and parsed_data:
+                metadata["metadata_info"] = parsed_data
 
-            elif result.file_type == "NOTIFICATION":
-                # Per le notifiche, mantieni i dati specifici
-                metadata["notification_data"] = {
-                    "tipo_notifica": parsed_data.get('tipo_notifica', 'N/D'),
-                    "identificativo_sdi": parsed_data.get('identificativo_sdi', ''),
-                    "data_ora_ricezione": parsed_data.get('data_ora_ricezione', ''),
-                    "riferimento_fattura": parsed_data.get('riferimento_fattura', '')
-                }
+            # --- Sezione di salvataggio file (con correzione) ---
 
-            elif result.file_type == "METADATA":
-                # Per i metadati, informazioni base
-                metadata["metadata_info"] = {
-                    "tipo": "Metadato AdE",
-                    "contenuto_presente": bool(parsed_data.get('content'))
-                }
-
-            # Salva JSON
+            # 1. Salva il file JSON con tutti i metadati
             json_path = structure['json'] / f"{base_name}.json"
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(metadata, f, ensure_ascii=False, indent=2, default=str)
 
-            # CORREZIONE: Salva XML decodificato con contenuto reale
+            # 2. Salva il contenuto XML in un file .xml pulito
             xml_path = structure['xml_decodificati'] / f"{base_name}.xml"
             with open(xml_path, 'w', encoding='utf-8') as f:
                 f.write(xml_content)
 
-            # Salva originale se P7M
-            if file_path.suffix.lower() == '.p7m':
-                orig_path = structure['p7m_originali'] / file_path.name
-                shutil.copy2(file_path, orig_path)
+            # 3. --- CORREZIONE: Archivia il file *originale* nella sua cartella dedicata ---
+            dest_path = None
+            if result.file_type == "INVOICE":
+                if file_path.suffix.lower() == '.p7m':
+                    dest_path = structure['p7m_originali'] / file_path.name
+                    shutil.copy2(file_path, dest_path)
+            elif result.file_type == "METADATA":
+                dest_path = structure['metadati'] / file_path.name
+                shutil.copy2(file_path, dest_path)
+            elif result.file_type == "NOTIFICATION":
+                dest_path = structure['ricevute_sdi'] / file_path.name
+                shutil.copy2(file_path, dest_path)
 
             self.logger.info(f"[OK] Organizzato: {client_personalized_name}/{year}/{result.file_type}/{base_name}")
             return True
 
         except Exception as e:
             self.logger.error(f"Errore salvataggio {file_path.name}: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
             return False
 
     def organize_downloaded_files(self, download_results: Dict[str, List[DownloadResult]],
-                                 decode: bool = True) -> OrganizationResult:
-        """CORREZIONE: Organizza file scaricati con XML content corretto e struttura esistente."""
-        result = OrganizationResult(success=True)
+                                      decode: bool = True) -> OrganizationResult:
+            """
+            VERSIONE CORRETTA E ROBUSTA: Organizza i file scaricati senza doppia decodifica
+            o analisi del percorso, basandosi su dati certi.
+            """
+            result = OrganizationResult(success=True)
 
-        try:
-            total_files = sum(len(results) for results in download_results.values())
+            try:
+                # Calcola il totale dei file effettivamente scaricati da processare
+                files_to_process = [
+                    res for client_res in download_results.values() for res in client_res
+                    if res.success and res.file_path and res.file_path.exists()
+                ]
+                total_files = len(files_to_process)
 
-            with tqdm(total=total_files, desc="Organizzazione Avanzata", unit="file") as pbar:
-                for client_id, results in download_results.items():
-                    client_folders = []
+                with tqdm(total=total_files, desc="Organizzazione Avanzata", unit="file") as pbar:
+                    # Itera su tutti i client e i rispettivi risultati
+                    for client_id, results in download_results.items():
+                        client_folders = []
 
-                    for download_result in results:
-                        if download_result.success and download_result.file_path:
-                            # CORREZIONE: Verifica che il file esista effettivamente
-                            if not download_result.file_path.exists():
-                                self.logger.warning(f"File non trovato: {download_result.file_path}")
-                                result.errors.append(f"File non trovato: {download_result.file_path.name}")
-                                pbar.update(1)
+                        for download_result in results:
+                            # Salta i file non scaricati o non più esistenti
+                            if not (download_result.success and download_result.file_path and download_result.file_path.exists()):
                                 continue
 
-                            # CORREZIONE: Processa con sistema avanzato
-                            proc_result, parsed_data = self.process_single_file_advanced(download_result.file_path)
+                            pbar.update(1) # Aggiorna la barra di avanzamento per ogni file processato
 
-                            if proc_result.status == "OK" and parsed_data:
-                                # CORREZIONE: Estrae XML content reale
-                                xml_content = ""
-                                if download_result.file_path.suffix.lower() == '.xml':
-                                    try:
-                                        xml_content = download_result.file_path.read_text(encoding='utf-8', errors='ignore')
-                                    except Exception as e:
-                                        self.logger.error(f"Errore lettura XML {download_result.file_path.name}: {e}")
-                                        result.errors.append(f"Errore lettura XML {download_result.file_path.name}")
-                                        pbar.update(1)
-                                        continue
+                            # 1. NON c'è bisogno di decodificare di nuovo. 'process_single_file_advanced' lo fa già.
+                            #    La funzione ora ritorna 3 valori, incluso l'xml_content.
+                            proc_result, parsed_data, xml_content = self.process_single_file_advanced(download_result.file_path)
 
-                                elif download_result.file_path.suffix.lower() == '.p7m':
-                                    # Riusa decodifica già fatta in process_single_file_advanced
-                                    temp_dir = download_result.file_path.parent / 'temp_extract_org'
-                                    try:
-                                        decode_result = self.decoder.decrypt_p7m_file_enhanced(download_result.file_path, temp_dir)
-                                        if decode_result.success and decode_result.xml_content:
-                                            xml_content = decode_result.xml_content
-                                        else:
-                                            self.logger.error(f"Decodifica P7M fallita per {download_result.file_path.name}")
-                                            result.errors.append(f"Decodifica P7M fallita: {download_result.file_path.name}")
-                                            pbar.update(1)
-                                            continue
-                                    except Exception as e:
-                                        self.logger.error(f"Errore decodifica P7M {download_result.file_path.name}: {e}")
-                                        result.errors.append(f"Errore decodifica P7M {download_result.file_path.name}")
-                                        pbar.update(1)
-                                        continue
-                                    finally:
-                                        # Cleanup
-                                        try:
-                                            shutil.rmtree(temp_dir)
-                                        except:
-                                            pass
-
-                                # CORREZIONE: Determina la destinazione finale basata sulla struttura esistente
-                                # Il file è già nella struttura COGNOME_NOME_PIVA_CF/DIREZIONE/ANNO/
-                                # Dobbiamo solo spostarlo nella sottostruttura finale
-
-                                current_path = download_result.file_path
-                                path_parts = current_path.parts
-
-                                # Trova il nome personalizzato del cliente dalla struttura del path
-                                client_personalized_name = None
-                                direzione = None
-                                anno = None
-
-                                # Cerca il pattern nella struttura del path
-                                for i, part in enumerate(path_parts):
-                                    # Il nome personalizzato dovrebbe contenere underscore multipli
-                                    if '_' in part and len(part.split('_')) >= 4:
-                                        client_personalized_name = part
-                                        if i + 2 < len(path_parts):
-                                            direzione = path_parts[i + 1]
-                                            anno = path_parts[i + 2]
-                                        break
-
-                                if not client_personalized_name:
-                                    # Fallback: usa configurazione cliente
-                                    client_config = self.clients_config.get(client_id, {})
-                                    client_personalized_name = create_personalized_directory_name(
-                                        client_config.get('nome', ''),
-                                        client_config.get('cognome', ''),
-                                        client_config.get('partita_iva_diretta', ''),
-                                        client_config.get('codice_fiscale', '')
-                                    ) if client_id != "Cliente_Sconosciuto" else client_id
-
-                                if not direzione:
-                                    # Determina direzione dai dati parsed
-                                    client_config = self.clients_config.get(client_id, {})
-                                    direzione = self.determine_invoice_direction(parsed_data, client_config)
-
-                                if not anno:
-                                    anno = parsed_data.get('invoice_year', str(datetime.now().year))
-
-                                # Crea struttura finale organizzata
-                                structure = self.create_client_structure(client_personalized_name, direzione, int(anno))
-
+                            if proc_result.status == "OK" and parsed_data and xml_content:
+                                
+                                # 2. NON c'è bisogno di analizzare il percorso. Usiamo i dati che abbiamo già.
+                                #    Il 'client_id' è noto dal ciclo, e il resto dei dati è in 'parsed_data'.
                                 success = self.save_organized_file_advanced(
                                     download_result.file_path,
-                                    xml_content,  # CORREZIONE: XML content reale
+                                    xml_content,
                                     parsed_data,
                                     proc_result,
                                     client_id
@@ -1755,109 +1744,86 @@ class AdvancedFileOrganizer:
 
                                 if success:
                                     result.organized_files += 1
-                                    # Aggiorna statistiche decodifica
                                     if proc_result.method_used != "NONE":
                                         result.decoding_stats[proc_result.method_used] = result.decoding_stats.get(proc_result.method_used, 0) + 1
-
-                                    # Aggiungi cartella client alla lista
-                                    folder_info = f"{client_personalized_name}/{direzione}/{anno}"
+                                    
+                                    # Aggiungi la cartella al report finale
+                                    client_config = self.clients_config.get(client_id, {})
+                                    client_personalized_name = self.get_client_personalized_name(client_id)
+                                    direction = self.determine_invoice_direction(parsed_data, client_config)
+                                    year = parsed_data.get('invoice_year', str(datetime.now().year))
+                                    folder_info = f"{client_personalized_name}/{direction}/{year}"
                                     if folder_info not in client_folders:
                                         client_folders.append(folder_info)
                                 else:
                                     result.errors.append(f"Errore salvataggio {download_result.file_path.name}")
-                            else:
-                                if proc_result.status == "SKIPPED":
-                                    continue  # Non è un errore
+                            
+                            elif proc_result.status != "SKIPPED":
                                 result.errors.append(f"Errore elaborazione {download_result.file_path.name}: {proc_result.error_message}")
 
-                        pbar.update(1)
+                        result.client_folders_created[client_id] = client_folders
 
-                    result.client_folders_created[client_id] = client_folders
-
-            return result
-
-        except Exception as e:
-            result.success = False
-            result.errors.append(str(e))
-            return result
-
-    def organize_only_advanced(self, source_dir: Optional[Path] = None, decode: bool = True) -> OrganizationResult:
-        """Organizzazione avanzata con elaborazione intelligente."""
-        if source_dir is None:
-            source_dir = Path(self.config['directory_sistema']['input_temp'])
-
-        try:
-            if not source_dir.exists():
-                result = OrganizationResult(success=False)
-                result.errors.append(f"Directory non trovata: {source_dir}")
                 return result
 
-            # Trova tutti i file supportati
-            all_files = []
-            for ext in SUPPORTED_EXTENSIONS:
-                all_files.extend(source_dir.glob(f"**/*{ext}"))
+            except Exception as e:
+                result.success = False
+                result.errors.append(str(e))
+                import traceback
+                self.logger.error(traceback.format_exc())
+                return result
+
+    def organize_only_advanced(self, source_dir: Optional[Path] = None, decode: bool = True) -> OrganizationResult:
+            """VERSIONE CORRETTA: Organizzazione avanzata che usa la logica efficiente."""
+            if source_dir is None:
+                source_dir = Path(self.config['directory_sistema']['input_temp'])
 
             result = OrganizationResult(success=True)
+            try:
+                if not source_dir.exists():
+                    result.success = False
+                    result.errors.append(f"Directory non trovata: {source_dir}")
+                    return result
 
-            with tqdm(all_files, desc="Riorganizzazione Avanzata", unit="file") as pbar:
-                for file_path in pbar:
-                    try:
-                        # Processa con sistema avanzato
-                        proc_result, parsed_data = self.process_single_file_advanced(file_path)
+                # Trova tutti i file potenzialmente validi
+                all_files = [p for p in source_dir.rglob('*') if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS]
 
-                        if proc_result.status == "OK" and parsed_data:
-                            # Estrae XML per salvataggio
-                            xml_content = ""
-                            if file_path.suffix.lower() == '.xml':
-                                xml_content = file_path.read_text(encoding='utf-8', errors='ignore')
-                            elif file_path.suffix.lower() == '.p7m':
-                                # Decodifica per ottenere XML
-                                temp_dir = file_path.parent / 'temp_decode_org'
-                                decode_result = self.decoder.decrypt_p7m_file_enhanced(file_path, temp_dir)
-                                if decode_result.success and decode_result.xml_content:
-                                    xml_content = decode_result.xml_content
-                                    # Cleanup
-                                    try:
-                                        shutil.rmtree(temp_dir)
-                                    except:
-                                        pass
+                with tqdm(all_files, desc="Riorganizzazione Avanzata", unit="file") as pbar:
+                    for file_path in pbar:
+                        try:
+                            # CORREZIONE: Chiama la funzione aspettandosi 3 valori
+                            proc_result, parsed_data, xml_content = self.process_single_file_advanced(file_path)
 
-                            # Salva organizzato
-                            success = self.save_organized_file_advanced(
-                                file_path, xml_content, parsed_data, proc_result, "Cliente_Riorganizzato"
-                            )
+                            if proc_result.status == "OK" and parsed_data and xml_content:
+                                # CORREZIONE: Non serve ri-decodificare, usiamo i risultati
+                                success = self.save_organized_file_advanced(
+                                    file_path, xml_content, parsed_data, proc_result
+                                ) # client_id qui è opzionale, verrà risolto dopo
 
-                            if success:
-                                result.organized_files += 1
-                                # Aggiorna statistiche
-                                if proc_result.method_used != "NONE":
-                                    result.decoding_stats[proc_result.method_used] = result.decoding_stats.get(proc_result.method_used, 0) + 1
-                            else:
-                                result.errors.append(f"Errore salvataggio {file_path.name}")
-                        else:
-                            if proc_result.status == "SKIPPED":
-                                continue  # Non è un errore
-                            result.errors.append(f"Errore elaborazione {file_path.name}: {proc_result.error_message}")
+                                if success:
+                                    result.organized_files += 1
+                                    if proc_result.method_used != "NONE":
+                                        result.decoding_stats[proc_result.method_used] = result.decoding_stats.get(proc_result.method_used, 0) + 1
+                                else:
+                                    result.errors.append(f"Errore salvataggio {file_path.name}")
 
-                        pbar.set_postfix({
-                            "Elaborati": result.organized_files,
-                            "Errori": len(result.errors)
-                        })
+                            elif proc_result.status != "SKIPPED":
+                                result.errors.append(f"Errore elaborazione {file_path.name}: {proc_result.error_message}")
 
-                    except Exception as e:
-                        result.errors.append(f"Errore {file_path.name}: {str(e)}")
+                            pbar.set_postfix({
+                                "Elaborati": result.organized_files,
+                                "Errori": len(result.errors)
+                            })
 
-            # Aggiungi statistiche complete
-            processing_stats = self.get_processing_statistics()
-            result.decoding_stats.update(processing_stats.get('decoder', {}))
+                        except Exception as e:
+                            result.errors.append(f"Errore critico su {file_path.name}: {str(e)}")
 
-            return result
+                return result
 
-        except Exception as e:
-            result = OrganizationResult(success=False)
-            result.errors.append(str(e))
-            return result
-
+            except Exception as e:
+                result.success = False
+                result.errors.append(str(e))
+                return result
+            
     def get_processing_statistics(self) -> Dict:
         """Restituisce statistiche complete di elaborazione."""
         decoder_stats = self.decoder.get_statistics()
@@ -2979,7 +2945,8 @@ def main():
 
                             for download_result in client_results:
                                 if download_result.success and download_result.file_path:
-                                    proc_result, _ = system.organizer.process_single_file_advanced(download_result.file_path)
+                                    # Riga corretta
+                                    proc_result, _, _ = system.organizer.process_single_file_advanced(download_result.file_path)        
                                     all_processing_results.append(proc_result)
 
                     # Genera report

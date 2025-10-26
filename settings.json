@@ -1,0 +1,365 @@
+{
+    // ═══════════════════════════════════════════════════════════════════════════════════════
+    // 🚀 CLAUDE CODE MAX 2025 - ULTIMATE SONNET 4.5 PYTHON ENTERPRISE CONFIGURATION
+    // ═══════════════════════════════════════════════════════════════════════════════════════
+    // Versione: 1.1
+    // Data: 26/10/2025
+    // Modello AI: Claude Sonnet 4.5 (claude-sonnet-4-5)
+    // Lingua predefinita: Italiano (IT)
+    // Feature chiave: memory persistente, adaptive context, checkpointing, agent orchestration
+    // Target: sviluppo Python enterprise-grade con AI avanzata e demo da 1 miliardo di dollari
+    // ═══════════════════════════════════════════════════════════════════════════════════════
+
+    // ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    // │ 🤖 CLAUDE CODE - CONFIGURAZIONE NUCLEARE                                            │
+    // └─────────────────────────────────────────────────────────────────────────────────────┘
+
+    // Configurazione Core Claude
+    "claude-code.executable": "C:\\Users\\Utente\\.local\\share\\claude\\claude.exe",
+    "claude-code.authMethod": "claudeai",
+    "claude-code.defaultModel": "claude-sonnet-4-5",
+    "claude-code.contextLimit": 200000,
+    "claude-code.workingDirectory": "${workspaceFolder}",
+
+    // Feature Avanzate AI - Memory & Context
+    "claude-code.enableAdaptiveContext": true,
+    "claude-code.enableMemory": true,
+    "claude-code.memoryFile": "${workspaceFolder}\\.claude\\memory.json",
+    "claude-code.enableCheckpointing": true,
+
+    // Workflow Zero-Friction - Massima Velocità
+    "claude-code.autoApprove": true,
+    "claude-code.allowDangerouslySkipPermissions": true,
+    "claude-code.editApproval": "never",
+    "claude-code.shellApproval": "never",
+    "claude-code.debugMode": true,
+
+    // Orchestrazione Agenti Multi-Parallelo
+    "claude-code.agents.maxParallel": 12,
+    "claude-code.agents.timeout": 900000,
+
+    // MCP Servers - Orchestrazione Agentica Avanzata
+    "claude-code.enableMCP": true,
+    "claude-code.mcpServers": {
+        "filesystem": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "${workspaceFolder}"]
+        },
+        "memory": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-memory"]
+        },
+        "fetch": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-fetch"]
+        },
+        "python": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-python", "--env=ai-dev"]
+        }
+    },
+
+    // Guardrail di Sicurezza - Controllo Permessi Granulare
+    "claude-code.permissions": {
+        "allow": [
+            "Read(./src/**)",
+            "Write(./src/**)",
+            "Bash(git *)",
+            "Bash(python -m pytest *)",
+            "Edit(./*.py)"
+        ],
+        "deny": [
+            "Read(./.env*)",
+            "Write(./secrets/**)",
+            "WebFetch(169.254.169.254)"
+        ],
+        "ask": [
+            "Edit(./settings.py)",
+            "Write(README.md)"
+        ]
+    },
+
+    // Variabili d'Ambiente AI
+    "claude-code.environmentVariables": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "ANTHROPIC_MODEL": "claude-sonnet-4-5",
+        "CLAUDE_CODE_AGENT_MODE": "on",
+        "CLAUDE_TELEMETRY": "minimal",
+        "CLAUDE_RESPONSE_LANGUAGE": "it-IT"
+    },
+
+    // Ottimizzazione Intelligente del Contesto
+    "claude-code.contextOptimization": {
+        "strategy": "semantic-summarization",
+        "autoPruneOldContext": true,
+        "tokenRecycleRatio": 0.85
+    },
+
+    // Profilo Progetto Auto-Detection
+    "claude-code.projectProfile": {
+        "language": "Python",
+        "frameworks": ["FastAPI", "Django", "Flask"],
+        "testFramework": "pytest",
+        "packageManager": "pip",
+        "buildTools": ["tox", "ruff", "mypy"],
+        "goal": "Enterprise-level AI-assisted software engineering",
+        "preferredLanguage": "it-IT",
+        "responseLanguage": "Italian",
+        "codeCommentLanguage": "Italian"
+    },
+
+    // ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    // │ 🐍 PYTHON - SISTEMA DI INGEGNERIA ENTERPRISE                                        │
+    // └─────────────────────────────────────────────────────────────────────────────────────┘
+
+    // Type Checking & Analisi - Rigore Massimo
+    "python.analysis.typeCheckingMode": "strict",
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.completeFunctionParens": true,
+    "python.analysis.inlayHints.functionReturnTypes": true,
+    "python.analysis.inlayHints.variableTypes": true,
+    "python.analysis.inlayHints.parameterNames": true,
+    "python.analysis.indexing": true,
+
+    // Linting & Qualità Codice - Tolleranza Zero
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": false,
+    "python.linting.mypyEnabled": true,
+    "python.linting.mypyArgs": [
+        "--strict",
+        "--show-error-codes",
+        "--pretty"
+    ],
+
+    // Formattazione - Codice Bello
+    "python.formatting.provider": "none",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.executeInFileDir": true,
+
+    // Testing - Workflow TDD
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    "python.testing.promptToConfigure": false,
+
+    // ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    // │ 📂 FILE SYSTEM - AUTO-SAVE & ENCODING                                               │
+    // └─────────────────────────────────────────────────────────────────────────────────────┘
+
+    // Auto-Save & Codifica Automatica
+    "files.autoSave": "onFocusChange",
+    "files.autoGuessEncoding": true,
+    "files.encoding": "utf8",
+    "files.eol": "\n",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+
+    // Esclusioni File - Workspace Pulito
+    "files.exclude": {
+        "**/.git": true,
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true,
+        "**/*.egg-info": true
+    },
+
+    // Esclusioni Watcher - Performance
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/**": true,
+        "**/.venv/**": true,
+        "**/venv/**": true,
+        "**/__pycache__/**": true,
+        "**/.pytest_cache/**": true,
+        "**/.mypy_cache/**": true,
+        "**/.ruff_cache/**": true
+    },
+
+    // ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    // │ ✨ EDITOR - AMBIENTE IPER-PRODUTTIVO                                                │
+    // └─────────────────────────────────────────────────────────────────────────────────────┘
+
+    // Intelligenza Editor - Editing Intelligente
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnType": false,
+    "editor.autoIndentOnPaste": true,
+    "editor.suggestSelection": "first",
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": true,
+
+    // Azioni Codice - Correzioni Automatiche
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit",
+        "source.fixAll": "explicit",
+        "source.fixAll.ruff": "explicit"
+    },
+    "editor.codeActions.triggerOnFocusChange": true,
+
+    // IntelliSense - Intelligenza Massima
+    "editor.quickSuggestions": {
+        "other": "on",
+        "comments": "on",
+        "strings": "on"
+    },
+    "editor.suggestOnTriggerCharacters": true,
+    "editor.acceptSuggestionOnCommitCharacter": true,
+    "editor.acceptSuggestionOnEnter": "smart",
+    "editor.wordBasedSuggestions": "matchingDocuments",
+    "editor.parameterHints.enabled": true,
+    "editor.hover.enabled": true,
+    "editor.hover.delay": 300,
+
+    // Miglioramenti Visivi
+    "editor.fontFamily": "'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
+    "editor.fontLigatures": true,
+    "editor.fontSize": 13,
+    "editor.lineHeight": 1.6,
+    "editor.cursorBlinking": "smooth",
+    "editor.cursorSmoothCaretAnimation": "on",
+    "editor.smoothScrolling": true,
+    "editor.minimap.enabled": true,
+    "editor.minimap.renderCharacters": false,
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": "active",
+    "editor.stickyScroll.enabled": true,
+
+    // Performance - Velocità Fulminea
+    "editor.maxTokenizationLineLength": 25000,
+    "editor.largeFileOptimizations": true,
+    "editor.allowVariableFontsInAccessibilityMode": true,
+
+    // ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    // │ 📂 WORKBENCH - WORKSPACE OTTIMIZZATO                                                │
+    // └─────────────────────────────────────────────────────────────────────────────────────┘
+
+    "workbench.editor.enablePreview": false,
+    "workbench.editor.revealIfOpen": true,
+    "workbench.editor.limit.enabled": true,
+    "workbench.editor.limit.value": 15,
+    "workbench.editor.closeOnFileDelete": true,
+    "workbench.startupEditor": "none",
+    "workbench.colorTheme": "Default Dark Modern",
+    "workbench.iconTheme": "vs-seti",
+    "workbench.tree.indent": 20,
+    "workbench.list.smoothScrolling": true,
+
+    // ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    // │ 🔧 GIT - CONTROLLO VERSIONE PROFESSIONALE                                           │
+    // └─────────────────────────────────────────────────────────────────────────────────────┘
+
+    "git.openRepositoryInParentFolders": "always",
+    "git.autofetch": true,
+    "git.autofetchPeriod": 180,
+    "git.confirmSync": false,
+    "git.enableSmartCommit": true,
+    "git.suggestSmartCommit": false,
+    "git.postCommitCommand": "sync",
+    "git.enableCommitSigning": false,
+    "git.fetchOnPull": true,
+    "git.pruneOnFetch": true,
+    "git.rebaseWhenSync": false,
+
+    // ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    // │ 🔍 SEARCH - RICERCA FULMINEA                                                        │
+    // └─────────────────────────────────────────────────────────────────────────────────────┘
+
+    "search.exclude": {
+        "**/.git": true,
+        "**/.venv": true,
+        "**/venv": true,
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/node_modules": true,
+        "**/dist": true,
+        "**/build": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true,
+        "**/coverage": true,
+        "**/*.egg-info": true
+    },
+    "search.smartCase": true,
+    "search.useGlobalIgnoreFiles": true,
+    "search.useParentIgnoreFiles": true,
+    "search.followSymlinks": false,
+
+    // ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    // │ 🎯 CONFIGURAZIONI SPECIFICHE PER LINGUAGGIO                                         │
+    // └─────────────────────────────────────────────────────────────────────────────────────┘
+
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit",
+            "source.fixAll": "explicit"
+        },
+        "editor.rulers": [88, 120],
+        "editor.wordWrap": "off",
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    },
+
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2
+    },
+
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2
+    },
+
+    "[markdown]": {
+        "editor.defaultFormatter": "vscode.markdown-language-features",
+        "editor.formatOnSave": true,
+        "editor.wordWrap": "on",
+        "editor.quickSuggestions": {
+            "comments": "on",
+            "strings": "on",
+            "other": "on"
+        }
+    },
+
+    // ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    // │ 🛡️ SICUREZZA & TELEMETRIA                                                           │
+    // └─────────────────────────────────────────────────────────────────────────────────────┘
+
+    "security.workspace.trust.enabled": true,
+    "telemetry.telemetryLevel": "off",
+
+    // ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    // │ 🎨 TERMINALE - SVILUPPO INTEGRATO                                                   │
+    // └─────────────────────────────────────────────────────────────────────────────────────┘
+
+    "terminal.integrated.fontFamily": "'Cascadia Code', 'Fira Code', monospace",
+    "terminal.integrated.fontSize": 12,
+    "terminal.integrated.lineHeight": 1.4,
+    "terminal.integrated.cursorBlinking": true,
+    "terminal.integrated.cursorStyle": "line",
+    "terminal.integrated.smoothScrolling": true,
+    "terminal.integrated.enableMultiLinePasteWarning": "auto",
+
+    // ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    // │ 🧪 TESTING - WORKFLOW TDD                                                           │
+    // └─────────────────────────────────────────────────────────────────────────────────────┘
+
+    "testing.automaticallyOpenPeekView": "failureInVisibleDocument",
+    "testing.followRunningTest": true,
+    "testing.openTesting": "neverOpen"
+
+    // ═══════════════════════════════════════════════════════════════════════════════════════
+    // 🎯 FINE CONFIGURAZIONE - Pronto per sviluppo da $1B! 💰🚀
+    // Versione 1.1 - 26/10/2025 - Lingua: Italiano
+    // ═══════════════════════════════════════════════════════════════════════════════════════
+}
